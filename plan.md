@@ -1,6 +1,6 @@
 # YT Desktop — Build Plan
 
-> **Status:** Phase 0 — in progress
+> **Status:** Phase 1 — Browse / Search / Play (in progress)
 > **License:** GPL-3.0-or-later
 > **Outputs:** Windows `.msi`/`.exe` (Compose Desktop) + Android `.apk`, both built by GitHub Actions
 > **This file is the single source of truth for build progress.** Update it after every completed item.
@@ -64,14 +64,14 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 
 ## Phase 1 — Browse / Search / Play (~7K lines)
 
-- [ ] **1.1** Service layer — pluggable `StreamingService` interface, YouTube impl
-- [ ] **1.2** OkHttp `Downloader` + Brotli + cookie jar
-- [ ] **1.3** Trending kiosks (8 YouTube kiosk IDs)
-- [ ] **1.4** Search + suggestions + search history
-- [ ] **1.5** Channel page (7 playable tabs)
-- [ ] **1.6** Unified player — `PlaybackSource` seam (remote vs local file)
-- [ ] **1.7** Play queue (4 pagination strategies)
-- [ ] **1.8** Error taxonomy (`ErrorInfo` / `UserAction` parity)
+- [x] **1.1** Service layer — pluggable `StreamingService` interface, YouTube impl (`core/service`, slice A, CI-verified: search / suggestions / trending / resolve playback)
+- [x] **1.2** OkHttp `Downloader` + Brotli + cookie jar (done in Phase 0, exercised by slice A)
+- [ ] **1.3** Trending kiosks (8 YouTube kiosk IDs) — kiosk enumeration + default feed done (slice A); kiosk picker UI pending
+- [ ] **1.4** Search + suggestions + search history — service methods done (slice A); search screen + history persistence pending
+- [ ] **1.5** Channel page (7 playable tabs) — `channelInfo`/`channelTab` done (slice A); channel screen pending
+- [ ] **1.6** Unified player — `PlaybackSource` seam + `PlayerEngine` interface done (slice A); libVLC engine impl pending
+- [ ] **1.7** Play queue (4 pagination strategies) — `PagedResult` continuation loader done (slice A); queue controller + UI pending
+- [x] **1.8** Error taxonomy (`ErrorInfo` / `UserAction` parity) — `core/errors` done (slice A, consumed by slice A)
 
 ---
 
@@ -212,3 +212,4 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | 2026-10-06 | 0.4 | `VlcPlayer` (wraps `EmbeddedMediaPlayerComponent`, mirrors libVLC events into snapshot state) + `VlcVideoSurface` `SwingPanel` host + `VlcPlayerHarness` URL/transport row for spike S3. Compiles locally |
 | 2026-10-06 | S1 | ✅ Green locally (12 s). New `spikes` CI job runs `:core:test --tests '*SpikeTest*'`. YouTube returned 20 search results, 5 audio streams, DASH + HLS, and served 1024 bytes over HTTP 206 — **R1 closed** |
 | 2026-10-06 | S3 | ✅ `PlaybackSpikeTest` green on the clean Windows runner (run `37437100182`, as an extra step in the windows job): direct video-only 144p URL advanced 2150 ms at 256×144, direct audio itag 139 advanced 2151 ms, local mp4+srt advanced 2402 ms at 480×270 with 2 subtitle tracks — **R3 closed**, R7 → 🟡 monitoring. Found: VLC 3.x cannot claim YouTube manifest URLs (ps-demuxer stall); `appResources` generated output is now git-ignored (not the ~600 staged DLLs); UPX disabled during spikes |
+| 2026-10-06 | 1.1 | ✅ **Slice A** landed (`6b58e40`) and is green locally + on CI (run `37442108967`, whole workflow green). `core/service`, `core/model`, `core/player`, `core/errors`; `YoutubeService` drives the extractor on `Dispatchers.IO`, R7 smoke: resolvePlayback picked **vp9 itag 313 (2160p)** + opus itag 251 for the smoke video; kiosks discovered at runtime: `Trending, live, trending_gaming, trending_movies_and_shows, trending_music, trending_podcasts_episodes`; `Phase1ServiceSmokeTest` (search/suggestions/trending/pagination/resolve/video page) added to the `spikes` job |
