@@ -56,7 +56,9 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
   - **Finding:** `videoStreams = 0` — YouTube serves *no* muxed progressive stream to this client, so remote playback **must** go through DASH (separate audio + video) or the DASH/HLS manifest. Feeds R7 and the shape of Phase 1.6.
   - **Finding:** `NewPipe.getServiceByUrl()` only accepts URLs that look like a *stream* link; a bare homepage throws `ExtractionException`. Select the service by `baseUrl` instead.
 - [ ] **S2** PoToken via `bgutil-pot.exe` subprocess (cookies **OFF**) — urgency dropped: S1 resolved streams and served bytes without one. Still required to confirm *when* it becomes necessary (region, format, quota).
-- [ ] **S3** libVLC Direct Rendering: remote DASH + local `.mp4` + `.srt` in one window
+- [x] **S3** libVLC playback of what the app ships: direct `googlevideo.com/videoplayback` stream URLs (video **and** audio) plus a local `.mp4`+`.srt` — ✅ `PlaybackSpikeTest` green on the clean Windows runner (run `37437100182`): video-only 144p advanced 2150 ms, decoded 256×144, 1 video output; audio (itag 139) advanced 2151 ms; local mp4+srt advanced 2402 ms at 480×270 with 2 subtitle tracks. Bundled VLC 3.0.21 demuxes YouTube DASH fMP4 directly — **no manifest parsing needed**. Runs as the `S3 - libVLC playback spike` step of the Windows CI job (`:desktopApp:test`, `dependsOn vlcSetup`).
+  - **Finding:** VLC 3.x **cannot** claim YouTube's extension-less `/api/manifest/hls_variant|dash` URLs — they fall to the `ps` demuxer probe and stall at 0 ms (`MOD validation failed`). Manifest-based playback is a dead end; direct per-stream URLs are the production path (they come free out of `StreamInfo`).
+  - **Findings:** `desktopApp/src/main/appResources/*` is output of the vlc-setup plugin, so it is **git-ignored**; `shouldIncludeAllVlcFiles` must stay `true`; `shouldCompressVlcFiles` (UPX) disabled during spikes, re-enable before shipping; dev-machine WDAC policy (error 4551) corrupts local libVLC runs, so S3 is CI-only.
 
 ---
 
@@ -166,11 +168,11 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 |---|---|---|---|
 | **R1** | YouTube extraction from a plain JVM | 🟢 handled | Spike **S1** green: search + stream extraction + byte-level probe (HTTP 206) with no WebView, no PoToken, no cookies. Enforced by the `spikes` CI job |
 | **R2** | PoToken requirement | 🔴 open | Solution known — gated by spike **S2** |
-| **R3** | libVLC DASH/HLS + subtitle rendering | 🔴 open | Gated by spike **S3** |
+| **R3** | libVLC DASH/HLS + subtitle rendering | 🟢 handled | Spike **S3** green on the clean Windows runner: direct video+audio `googlevideo.com/videoplayback` URLs and a local mp4+srt all advance and decode. HLS/manifest paths are a non-feature (VLC 3.x never claims extension-less manifest URLs) |
 | **R4** | YouTube OTF / post-live DVR manifest synthesis has no libVLC equivalent | 🟡 accepted | Feed libVLC direct progressive/HLS URLs; accept fidelity gap |
 | **R5** | 13.8 GB disk headroom | 🟡 monitoring | Hard checkpoint: purge Gradle caches below 5 GB |
 | **R6** | **YouTube-only means no fallback service.** If YouTube breaks, there is nothing else to show | 🟡 accepted | Keep `StreamingService` pluggable so recovery is cheap |
-| **R7** | **libVLC 3.x cannot decode AV1.** YouTube defaults to AV1/VP9; VLC 3.0.21 covers VP8/VP9/H.264/H.265 + audio but *not* AV1 or H.266 | 🔴 open | Resolve AV1-explicit streams to a VP9/H.264 variant before handing the URL to VLC. Needs a spike to confirm which formats fail in practice |
+| **R7** | **libVLC 3.x cannot decode AV1.** YouTube defaults to AV1/VP9; VLC 3.0.21 covers VP8/VP9/H.264/H.265 + audio but *not* AV1 or H.266 | 🟡 monitoring | S3 confirmed the mitigation shape: pick a decoded format (VP9/H.264) before handing the URL to VLC. 144p AVC decoded fine headless. Still unproven: **high-resolution** AV1 is served first by YouTube, so stream selection must resolve AV1-explicit itags to a VP9/H.264 variant in Phase 1.6 |
 | **R8** | No local build possible — `dl.google.com` unreachable, Maven Central crawl rate. Nothing has been compiled | 🔴 open | Verify via GitHub Actions on every push; do not trust "written" code until CI is green |
 | **R9** | Extractor API drift: at the pinned commit `Downloader.execute(Request)` is the only abstract member (`getAsStream`/`getContentLength` were removed upstream) | 🟢 handled | `HttpDownloader` implements only `execute`; re-check on every extractor bump |
 | **R10** | **JitPack purges published artifacts.** The pinned NewPipeExtractor SHA-1 returned 404 mid-project | 🟢 handled | Pinned a 39-char prefix of the same commit; NewPipe's own catalog documents this workaround |
@@ -209,3 +211,4 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | 2026-10-06 | 0.7/0.8 | ✅ Run `37423534342` **fully green** — `windows-installer`, `android-apk`, `android-tv-release` all uploaded |
 | 2026-10-06 | 0.4 | `VlcPlayer` (wraps `EmbeddedMediaPlayerComponent`, mirrors libVLC events into snapshot state) + `VlcVideoSurface` `SwingPanel` host + `VlcPlayerHarness` URL/transport row for spike S3. Compiles locally |
 | 2026-10-06 | S1 | ✅ Green locally (12 s). New `spikes` CI job runs `:core:test --tests '*SpikeTest*'`. YouTube returned 20 search results, 5 audio streams, DASH + HLS, and served 1024 bytes over HTTP 206 — **R1 closed** |
+| 2026-10-06 | S3 | ✅ `PlaybackSpikeTest` green on the clean Windows runner (run `37437100182`, as an extra step in the windows job): direct video-only 144p URL advanced 2150 ms at 256×144, direct audio itag 139 advanced 2151 ms, local mp4+srt advanced 2402 ms at 480×270 with 2 subtitle tracks — **R3 closed**, R7 → 🟡 monitoring. Found: VLC 3.x cannot claim YouTube manifest URLs (ps-demuxer stall); `appResources` generated output is now git-ignored (not the ~600 staged DLLs); UPX disabled during spikes |
