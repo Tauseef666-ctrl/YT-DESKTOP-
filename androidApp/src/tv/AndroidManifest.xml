@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  YT Desktop — Android TV flavour overlay.
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  Only packaging differences from the phone build live here: this APK must be
+  installable on leanback devices and show up in the TV launcher with a banner.
+  All application code is shared with the phone flavour; TV-only behaviour is
+  selected at runtime via TvUtils.isTv().
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- TV flavour is leanback-only: require it and drop the touchscreen
+         requirement the Play Store otherwise infers from our permissions. -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application
+        android:banner="@drawable/tv_banner"
+        android:usesCleartextTraffic="false" />
+</manifest>

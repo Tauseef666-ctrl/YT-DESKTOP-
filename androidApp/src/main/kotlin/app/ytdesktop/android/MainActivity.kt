@@ -4,7 +4,9 @@
  */
 package app.ytdesktop.android
 
+import android.app.ActivityInfo
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -24,13 +26,26 @@ import androidx.compose.ui.unit.dp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // NewPipe (PR #2806) found real TV boxes refuse to rotate out of
+        // landscape and hang on emulators that try, so pin it explicitly.
+        val isTv = TvUtils.isTv(this)
+        if (isTv) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+
         setContent {
             YtDesktopAndroidTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    PlaceholderScreen()
+                    if (isTv) {
+                        TvShell()
+                    } else {
+                        PlaceholderScreen()
+                    }
                 }
             }
         }

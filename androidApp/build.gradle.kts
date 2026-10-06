@@ -20,10 +20,29 @@ android {
         versionName = providers.gradleProperty("yt.version").getOrElse("0.1.0")
     }
 
+    // Two APKs from one code base. `phone` is the pure build; `tv` is the pure
+    // build plus Android TV packaging (leanback launcher, banner, D-pad shell).
+    // Manifest overlay + banner live in src/tv/, everything else is shared.
+    flavorDimensions += "device"
+    productFlavors {
+        create("phone") {
+            dimension = "device"
+            isDefault = true
+        }
+        create("tv") {
+            dimension = "device"
+        }
+    }
+
     buildTypes {
         release {
-            // Unsigned for now; a signing config is deferred until release work.
+            // R8 is deliberately still off: it needs a ProGuard ruleset for
+            // NewPipeExtractor + kotlinx.serialization that we cannot exercise
+            // until an Android SDK is available locally. Tracked in plan.md.
             isMinifyEnabled = false
+            // Signed with the debug keystore so the CI artifact is installable.
+            // Replace with a real release keystore before publishing.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
