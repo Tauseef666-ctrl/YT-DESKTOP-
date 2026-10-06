@@ -105,9 +105,10 @@ class PlaybackSpikeTest {
                 it.resolution.split("x", "p").first().toIntOrNull() ?: Int.MAX_VALUE
             }
             ?: error("extractor returned no video-only stream - nothing to play")
-        println("S3 video-only: ${stream.resolution} url=${stream.url}")
+        val url = stream.url ?: error("video-only stream has no url")
+        println("S3 video-only: ${stream.resolution} url=$url")
 
-        val result = playAndProbe(stream.url)
+        val result = playAndProbe(url)
 
         println(
             "  playing=${result.reachedPlaying} advanced=${result.advancedMs}ms " +
@@ -131,9 +132,10 @@ class PlaybackSpikeTest {
     fun `direct googlevideo audio stream plays`() {
         val stream = extract().audioStreams.firstOrNull()
             ?: error("extractor returned no audio stream - nothing to play")
-        println("S3 audio: url=${stream.url}")
+        val url = stream.url ?: error("audio stream has no url")
+        println("S3 audio: url=$url")
 
-        val result = playAndProbe(stream.url)
+        val result = playAndProbe(url)
 
         println(
             "  playing=${result.reachedPlaying} advanced=${result.advancedMs}ms " +
