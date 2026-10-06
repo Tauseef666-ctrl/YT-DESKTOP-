@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.time.Duration
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -27,6 +28,36 @@ dependencies {
     implementation(libs.jna.platform)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.okhttp)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+// Spike S3 plays real media through libVLC in-process, so the staged native
+// libraries must be on disk before the test JVM starts and discoverable by JNA.
+val stagedVlcOsDir = run {
+    val os = System.getProperty("os.name")?.lowercase() ?: ""
+    when {
+        os.contains("win") -> "windows"
+        os.contains("mac") -> "macos"
+        else -> "linux"
+    }
+}
+val stagedVlcHome = layout.projectDirectory.dir("src/main/appResources/$stagedVlcOsDir/vlc")
+
+tasks.test {
+    dependsOn("vlcSetup")
+    systemProperty("yt.vlcHome", stagedVlcHome.asFile.absolutePath)
+    systemProperty("jna.library.path", stagedVlcHome.asFile.absolutePath)
+    systemProperty("vlc.plugin.path", stagedVlcHome.dir("plugins").asFile.absolutePath)
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    // Remote DASH extraction plus two playback round-trips.
+    timeout.set(Duration.ofMinutes(5))
 }
 
 compose.desktop {
@@ -69,9 +100,13 @@ compose.desktop {
 vlcSetup {
     vlcVersion = libs.versions.vlc.get()
     shouldCompressVlcFiles = true
-    // false keeps the download small; the base set plays the formats we need.
-    // Set to true if codec coverage turns out to be insufficient.
-    shouldIncludeAllVlcFiles = false
+    // MUST stay true. The plugin's built-in keep-list ships only ~20 DLLs and
+    // omits everything YT Desktop needs: access/libhttp+libhttps (any network
+    // playback), demux/libadaptive (VLC 3 puts HLS *and* DASH there),
+    // demux/libmp4, demux/libwebm, and the whole spu/ tree (subtitles).
+    // Spike S3 failed against the filtered set for exactly this reason.
+    // Revisit only with a keep-list we have verified end to end.
+    shouldIncludeAllVlcFiles = true
     pathToCopyVlcLinuxFilesTo = file("src/main/appResources/linux/vlc")
     pathToCopyVlcMacosFilesTo = file("src/main/appResources/macos/vlc")
     pathToCopyVlcWindowsFilesTo = file("src/main/appResources/windows/vlc")

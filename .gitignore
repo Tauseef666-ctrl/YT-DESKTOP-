@@ -24,3 +24,6 @@ desktopApp/build/vlc/
 
 # Runtime data
 *.log
+
+# vlc-setup staging (regenerated on every build; CI generates its own)
+desktopApp/src/main/appResources/

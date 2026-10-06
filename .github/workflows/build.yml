@@ -73,6 +73,21 @@ jobs:
           }
           Write-Host "vlc archive: $((Get-Item $file).Length) bytes"
 
+      # Spike S3: real libVLC playback (headless). `vlcSetup` re-stages the
+      # full plugin set under appResources, then the test plays YouTube's DASH
+      # and HLS manifests plus a local mp4+srt. Runs on Windows because that is
+      # our packaged target and CI has no WDAC policy (locally one blocks a
+      # handful of VLC DLLs with error 4551, poisoning results).
+      - name: S3 - libVLC playback spike
+        run: ./gradlew.bat :desktopApp:test --tests '*PlaybackSpikeTest*' --stacktrace
+
+      - name: Upload S3 test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-test-report
+          path: desktopApp/build/reports/tests/
+
       - name: Build MSI and portable EXE
         run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe --stacktrace
 
