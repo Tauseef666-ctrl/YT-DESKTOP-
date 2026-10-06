@@ -43,6 +43,7 @@ fun SearchScreen(
     history: List<String> = emptyList(),
     onQuerySubmitted: (String) -> Unit = {},
     onClearHistory: () -> Unit = {},
+    onChannelClick: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
@@ -148,6 +149,7 @@ fun SearchScreen(
                     FeedColumn(
                         feed = feed,
                         onVideoClick = onVideoClick,
+                        onChannelClick = onChannelClick,
                         modifier = Modifier.weight(1f),
                     )
                 }

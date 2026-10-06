@@ -32,6 +32,7 @@ import app.ytdesktop.storage.SearchHistoryStore
 import app.ytdesktop.ui.AppShell
 import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
+import app.ytdesktop.ui.browse.ChannelScreen
 import app.ytdesktop.ui.browse.TrendingScreen
 import app.ytdesktop.ui.nav.AppScreen
 import app.ytdesktop.ui.nav.NavigationPane
@@ -71,8 +72,10 @@ fun App() {
         val engine = remember { VlcPlayerEngine(vlcPlayer) }
         val service = remember { YoutubeService() }
         var screen by remember { mutableStateOf(AppScreen.Browse) }
+        var openedChannel by remember { mutableStateOf<String?>(null) }
         var pendingVideo: StreamItem? by remember { mutableStateOf(null) }
         val onVideoClick: (StreamItem) -> Unit = { pendingVideo = it }
+        val onChannelClick: (String) -> Unit = { openedChannel = it }
         val historyStore = remember { SearchHistoryStore.inDefaultDir() }
         var searchHistory by remember { mutableStateOf(historyStore.load()) }
 
@@ -101,17 +104,37 @@ fun App() {
             AppShell(
                 widthClass = widthClass,
                 navigation = {
-                    NavigationPane(screen = screen, onSelect = { screen = it })
+                    NavigationPane(
+                        screen = screen,
+                        onSelect = { selected ->
+                            screen = selected
+                            openedChannel = null
+                        },
+                    )
                 },
                 content = {
-                    when (screen) {
-                        AppScreen.Browse -> TrendingScreen(service = service, onVideoClick = onVideoClick)
+                    val channelUrl = openedChannel
+                    if (channelUrl != null) {
+                        ChannelScreen(
+                            service = service,
+                            channelUrl = channelUrl,
+                            onBack = { openedChannel = null },
+                            onVideoClick = onVideoClick,
+                            onChannelClick = onChannelClick,
+                        )
+                    } else when (screen) {
+                        AppScreen.Browse -> TrendingScreen(
+                            service = service,
+                            onVideoClick = onVideoClick,
+                            onChannelClick = onChannelClick,
+                        )
                         AppScreen.Search -> SearchScreen(
                             service = service,
                             onVideoClick = onVideoClick,
                             history = searchHistory,
                             onQuerySubmitted = { historyStore.append(it); searchHistory = historyStore.load() },
                             onClearHistory = { historyStore.clear(); searchHistory = emptyList() },
+                            onChannelClick = onChannelClick,
                         )
                         AppScreen.Updates -> UpdatePane(
                             info = AppInfo(currentVersion = APP_VERSION, platformLabel = "Windows"),

@@ -41,14 +41,16 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * The scrolling feed of [PageItem]s used by Trending and Search. Reaches the
- * end of the current page before asking [ResourceFeed] to load the next.
+ * The scrolling feed of [PageItem]s used by Trending, Search and channel tabs.
+ * Reaches the end of the current page before asking [ResourceFeed] to load the
+ * next.
  */
 @Composable
 fun FeedColumn(
     feed: ResourceFeed,
     onVideoClick: (StreamItem) -> Unit,
     modifier: Modifier = Modifier,
+    onChannelClick: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
 
@@ -80,6 +82,7 @@ fun FeedColumn(
                     title = item.title,
                     subtitle = item.subscriberCount?.let { "Channel · ${compactCount(it)}" } ?: "Channel",
                     thumbnailUrl = item.thumbnailUrl,
+                    onClick = { onChannelClick(item.url) },
                 )
             }
         }
@@ -162,8 +165,14 @@ private fun PageCard(
     subtitle: String,
     thumbnailUrl: String?,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
-    Row(modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp)) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+    ) {
         Box {
             AsyncImage(
                 model = thumbnailUrl,
