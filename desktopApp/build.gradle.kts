@@ -20,6 +20,8 @@ dependencies {
     implementation(project(":ui"))
 
     implementation(compose.desktop.currentOs)
+    implementation(compose.foundation)
+    implementation(compose.material3)
     implementation(libs.vlcj)
     implementation(libs.jna)
     implementation(libs.jna.platform)

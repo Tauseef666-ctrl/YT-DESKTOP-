@@ -19,9 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.ytdesktop.player.VlcPlayerHarness
+import app.ytdesktop.player.rememberVlcPlayer
 import app.ytdesktop.ui.AppShell
 import app.ytdesktop.ui.PlaceholderPane
-import app.ytdesktop.ui.PlaybackPane
 import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
 
@@ -48,6 +49,7 @@ fun App() {
         var windowWidth by remember { mutableStateOf(INITIAL_WIDTH) }
         val density = LocalDensity.current
         val widthClass = WindowWidthClass.fromWidth(windowWidth)
+        val vlcPlayer = rememberVlcPlayer()
 
         Box(
             Modifier
@@ -60,7 +62,7 @@ fun App() {
                 widthClass = widthClass,
                 navigation = { PlaceholderPane("Nav") },
                 content = { PlaceholderPane("Browse / Search") },
-                player = { PlaybackPane() },
+                player = { VlcPlayerHarness(vlcPlayer, Modifier.fillMaxSize()) },
             )
         }
     }

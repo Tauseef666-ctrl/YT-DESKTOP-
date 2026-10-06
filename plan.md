@@ -37,7 +37,7 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 - [x] **0.1** Install JDK 21, verify `java -version`
 - [x] **0.2** Scaffold Gradle project — settings, root build, version catalog, wrapper 8.13
 - [x] **0.3** Compose Desktop shell, adaptive layout (3 pane widths) — compiles
-- [ ] **0.4** VLCJ 4.11.0 + Direct Rendering video surface — dependency wired, surface pending
+- [x] **0.4** VLCJ 4.11.0 video surface — `VlcPlayer` + `SwingPanel` host, compiles
 - [x] **0.5** `ir.mahozad.vlc-setup` + bundle libVLC into the installer — verified by CI
 - [x] **0.6** `packageMsi` + `packageExe` → ✅ **green CI run**
 - [x] **0.7** GitHub Actions workflow for MSI **and** APK — ✅ **all jobs green**
@@ -154,6 +154,7 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | R8 **off** for release for now | Needs a ProGuard ruleset for NewPipeExtractor + kotlinx.serialization that cannot be exercised without a local Android SDK. Tracked as 0.8 follow-up |
 | NewPipeExtractor pinned to a **39-char commit prefix** | JitPack purges artifacts; the exact 40-char SHA-1 404s while the prefix still resolves to the same commit — the same workaround NewPipe's own `libs.versions.toml` documents |
 | libVLC seeded from `download.videolan.org` in CI | `get.videolan.org` 302s to a mirror pool and `mirror.ajl.albony.in` served an **expired TLS cert**; a cert failure cannot be retried, so the archive is fetched from VideoLAN's own host before Gradle runs |
+| Player controls sit **below** the video stage, not over it | Compose Desktop's `SwingPanel` renders above the Skia layer, so a Compose overlay would be painted *underneath* the video. Controls live in their own row until S3 proves an overlay is possible |
 
 ---
 
@@ -204,3 +205,4 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | 2026-10-06 | 0.8 | `tv`/`phone` flavours; `src/tv/` manifest overlay (`leanback`, `banner`, `touchscreen` not required) + generated 320×180 banner |
 | 2026-10-06 | 0.8 | `TvUtils` (ported from NewPipe's `AndroidTvUtils`) + `TvShell` D-pad shell with visible focus ring; landscape + keep-screen-on on TV |
 | 2026-10-06 | 0.7/0.8 | ✅ Run `37423534342` **fully green** — `windows-installer`, `android-apk`, `android-tv-release` all uploaded |
+| 2026-10-06 | 0.4 | `VlcPlayer` (wraps `EmbeddedMediaPlayerComponent`, mirrors libVLC events into snapshot state) + `VlcVideoSurface` `SwingPanel` host + `VlcPlayerHarness` URL/transport row for spike S3. Compiles locally |
