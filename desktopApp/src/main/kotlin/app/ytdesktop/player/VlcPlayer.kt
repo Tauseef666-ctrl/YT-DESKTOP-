@@ -64,6 +64,9 @@ class VlcPlayer {
     var error by mutableStateOf<String?>(null)
         private set
 
+    /** Invoked when a media reaches its natural end (auto-advance hook). */
+    var onFinished: (() -> Unit)? = null
+
     private val listener = object : MediaPlayerEventAdapter() {
         override fun playing(player: MediaPlayer) {
             isPlaying = true
@@ -81,6 +84,7 @@ class VlcPlayer {
 
         override fun finished(player: MediaPlayer) {
             isPlaying = false
+            onFinished?.invoke()
         }
 
         override fun error(player: MediaPlayer) {

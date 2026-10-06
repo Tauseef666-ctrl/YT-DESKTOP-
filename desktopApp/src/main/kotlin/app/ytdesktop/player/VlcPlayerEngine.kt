@@ -28,6 +28,13 @@ class VlcPlayerEngine(private val player: VlcPlayer) : PlayerEngine {
     private var errorOverride: String? = null
     private var isAudioOnly = false
 
+    /** Auto-advance hook fired when the current media finishes. */
+    var onFinished: (() -> Unit)? = null
+
+    init {
+        player.onFinished = { onFinished?.invoke() }
+    }
+
     override val state: PlayerState
         get() = PlayerState(
             isPlaying = player.isPlaying,

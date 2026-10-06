@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -22,11 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import app.ytdesktop.core.errors.ErrorInfo
-import app.ytdesktop.core.errors.UserAction
-import app.ytdesktop.core.errors.YtException
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.YoutubeService
+import app.ytdesktop.player.PlayQueueController
 import app.ytdesktop.player.PlayerChrome
 import app.ytdesktop.player.VlcPlayerEngine
 import app.ytdesktop.player.VlcVideoSurface
@@ -74,33 +72,14 @@ fun App() {
         val vlcPlayer = rememberVlcPlayer()
         val engine = remember { VlcPlayerEngine(vlcPlayer) }
         val service = remember { YoutubeService() }
+        val scope = rememberCoroutineScope()
+        val controller = remember(service, engine) { PlayQueueController(scope, service, engine) }
         var screen by remember { mutableStateOf(AppScreen.Browse) }
         var openedChannel by remember { mutableStateOf<String?>(null) }
-        var pendingVideo: StreamItem? by remember { mutableStateOf(null) }
-        val onVideoClick: (StreamItem) -> Unit = { pendingVideo = it }
+        val onVideoClick: (StreamItem) -> Unit = controller::play
         val onChannelClick: (String) -> Unit = { openedChannel = it }
         val historyStore = remember { SearchHistoryStore.inDefaultDir() }
         var searchHistory by remember { mutableStateOf(historyStore.load()) }
-
-        LaunchedEffect(pendingVideo) {
-            val item = pendingVideo ?: return@LaunchedEffect
-            pendingVideo = null
-            try {
-                val resolved = service.resolvePlayback(item.url)
-                engine.play(
-                    source = resolved.video,
-                    title = resolved.title,
-                    companionAudio = resolved.audio,
-                )
-            } catch (e: YtException) {
-                engine.reportLoadFailure(item.title, e.errorInfo)
-            } catch (e: Exception) {
-                engine.reportLoadFailure(
-                    item.title,
-                    ErrorInfo(UserAction.STREAM_RESOLUTION, e.message ?: "Could not load this video"),
-                )
-            }
-        }
 
         Box(
             Modifier
@@ -150,10 +129,19 @@ fun App() {
                         )
                     }
                 },
-                player = {
+player = {
                     Column(Modifier.fillMaxSize()) {
                         VlcVideoSurface(vlcPlayer, Modifier.weight(1f).fillMaxWidth())
-                        PlayerChrome(engine, Modifier.fillMaxWidth())
+                        PlayerChrome(
+                            engine = engine,
+                            modifier = Modifier.fillMaxWidth(),
+                            queue = controller.items,
+                            currentIndex = controller.currentIndex,
+                            resolving = controller.resolving,
+                            onSelectQueue = controller::playAt,
+                            onNext = controller::next,
+                            onPrevious = controller::previous,
+                        )
                     }
                 },
             )
