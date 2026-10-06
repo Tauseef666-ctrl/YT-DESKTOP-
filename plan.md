@@ -26,7 +26,7 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 |---|---|---|
 | JDK 21 (Temurin) | ✅ done | `21.0.12.1+1 LTS` at `C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot` |
 | Gradle 8.13 wrapper | ✅ generated | `gradlew` works; distribution seeded into `~/.gradle/wrapper/dists` |
-| GitHub CLI `gh` | ⚠️ installed, not authenticated | User must run `gh auth login` |
+| GitHub CLI `gh` | ✅ authenticated | Logged in as `Tauseef666-ctrl`; CI logs readable via `gh run view <id> --log-failed` |
 | Disk headroom | ⚠️ 13.8 GB free | Hard checkpoint: purge caches if < 5 GB |
 | Android SDK | ⏳ only needed for the APK build | CI installs it; local desktop build does not need it |
 
@@ -39,12 +39,16 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 - [x] **0.3** Compose Desktop shell, adaptive layout (3 pane widths) — compiles
 - [ ] **0.4** VLCJ 4.11.0 + Direct Rendering video surface — dependency wired, surface pending
 - [x] **0.5** `ir.mahozad.vlc-setup` + bundle libVLC into the installer — verified by CI
-- [x] **0.6** `packageMsi` + `packageExe` → ✅ **green CI run** (run `37416812250`)
-- [x] **0.7** GitHub Actions workflow for MSI **and** APK — Windows job green; APK job still fixing SDK setup
+- [x] **0.6** `packageMsi` + `packageExe` → ✅ **green CI run**
+- [x] **0.7** GitHub Actions workflow for MSI **and** APK — ✅ **all jobs green**
+- [x] **0.8** Android TV build — `tv` flavour, leanback packaging, D-pad shell, CI artifact
 
-> **Verification status:** `:core`, `:ui` and `:desktopApp` compile locally and the
-> Windows MSI + EXE job is green in CI. The Android APK job has not yet produced an
-> APK — SDK bootstrap in CI is the remaining blocker.
+> **Verification status:** ✅ Run `37423534342` is green on both jobs.
+> Artifacts: `windows-installer` (235 MB MSI+EXE), `android-apk` (10.9 MB phone
+> debug), `android-tv-release` (8.1 MB TV release). Android 112 s, Windows 196 s,
+> ~3m16s wall clock.
+>
+> Remaining Phase 0 work is the **0.4** video surface and spikes **S1–S3**.
 
 ### Spikes — ALL must pass before Phase 1 starts
 
@@ -86,6 +90,29 @@ settings parity · backup/restore · import/export.
 
 ---
 
+## Android TV
+
+Packaging and the D-pad shell are done (0.8). The rest is a backlog lifted from
+NewPipe's TV work so we ship the fixes its users keep asking for.
+
+Reference: TeamNewPipe/NewPipe **PR #2806** "Android TV support" (merged) and its
+`AndroidTvUtils`, `FocusOverlayView`, `FocusAwareSeekBar`, `NewPipeRecyclerView`,
+`LargeTextMovementMethod`.
+
+- [x] `LEANBACK_LAUNCHER`, `android:banner`, touchscreen `required=false`
+- [x] Runtime `isTv()` + confirm/direction key classification
+- [x] Leanback landing shell: every target D-pad reachable, focus ring at distance
+- [x] Landscape pinned + screen kept on while watching (TV boxes refuse portrait — #2806)
+- [ ] Player D-pad contract: DPAD shows/hides controls, BACK dismisses controls before exiting
+- [ ] Focus indicator overlay for the player surface
+- [ ] D-pad seek bar with visible thumb and repeat-on-hold
+- [ ] Long descriptions scrollable with the D-pad
+- [ ] Audit every screen for gesture-only actions — NewPipe #3687, #11197, #13853
+- [ ] Tab reordering without swipe gestures — NewPipe #12635
+- [ ] Popup/player resize with keys — NewPipe #12823
+
+---
+
 ## Module Layout
 
 ```
@@ -121,6 +148,12 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | PoToken **and** cookies are mutually exclusive | Verified landmine: combining them makes YouTube return *"Requested format is not available"* |
 | `bgutil` recommended in `settings.gradle.kts` as `includeBuild` | Optional; enable only when extractor work requires a local checkout |
 | KMP only for `ui`, plain JVM for `core` | Core is pure JVM bytecode so Android can consume it directly without an `expect/actual` split |
+| Android TV is a **flavour, not a fork** | `tv`/`phone` share every source file; only the manifest overlay and banner differ. Mirrors NewPipe's merged TV support (#2806), which added `LEANBACK_LAUNCHER` + `TvUtils.isTv()` instead of forking |
+| TV behaviour decided at **runtime** | One APK then also runs on a TV box; `TvUtils` is a port of NewPipe's `AndroidTvUtils` (`isTv`, `isConfirmKey`, `isDirectionKey`) |
+| Release APK signed with the **debug keystore** | Keeps the CI artifact installable. Replace before publishing |
+| R8 **off** for release for now | Needs a ProGuard ruleset for NewPipeExtractor + kotlinx.serialization that cannot be exercised without a local Android SDK. Tracked as 0.8 follow-up |
+| NewPipeExtractor pinned to a **39-char commit prefix** | JitPack purges artifacts; the exact 40-char SHA-1 404s while the prefix still resolves to the same commit — the same workaround NewPipe's own `libs.versions.toml` documents |
+| libVLC seeded from `download.videolan.org` in CI | `get.videolan.org` 302s to a mirror pool and `mirror.ajl.albony.in` served an **expired TLS cert**; a cert failure cannot be retried, so the archive is fetched from VideoLAN's own host before Gradle runs |
 
 ---
 
@@ -137,6 +170,9 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | **R7** | **libVLC 3.x cannot decode AV1.** YouTube defaults to AV1/VP9; VLC 3.0.21 covers VP8/VP9/H.264/H.265 + audio but *not* AV1 or H.266 | 🔴 open | Resolve AV1-explicit streams to a VP9/H.264 variant before handing the URL to VLC. Needs a spike to confirm which formats fail in practice |
 | **R8** | No local build possible — `dl.google.com` unreachable, Maven Central crawl rate. Nothing has been compiled | 🔴 open | Verify via GitHub Actions on every push; do not trust "written" code until CI is green |
 | **R9** | Extractor API drift: at the pinned commit `Downloader.execute(Request)` is the only abstract member (`getAsStream`/`getContentLength` were removed upstream) | 🟢 handled | `HttpDownloader` implements only `execute`; re-check on every extractor bump |
+| **R10** | **JitPack purges published artifacts.** The pinned NewPipeExtractor SHA-1 returned 404 mid-project | 🟢 handled | Pinned a 39-char prefix of the same commit; NewPipe's own catalog documents this workaround |
+| **R11** | Third-party CDN/mirror reliability for the 77 MB libVLC archive (truncated body, then an expired TLS cert) | 🟢 handled | CI seeds from `download.videolan.org` with a size check; `Download` tasks retry + `tempAndMove` |
+| **R12** | Android TV UX parity: NewPipe still tracks gesture-only actions as broken on TV (#3687, #11197, #13853, #12635) | 🟡 open | Every control we ship must have a D-pad equivalent; `TvShell` sets the pattern, audit when the player lands |
 
 ---
 
@@ -162,3 +198,9 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | 2026-10-05 | 0.7 | `.github/workflows/build.yml` — Windows MSI+EXE job, Android APK job |
 | 2026-10-05 | — | `core`: `CookieStore` + `HttpDownloader` written against the *verified* pinned extractor API |
 | 2026-10-05 | — | Android module skeleton (`androidApp`) added but excluded unless `-Pyt.android=on` |
+| 2026-10-06 | 0.2 | AGP pinned to **8.7.3** — Kotlin 2.1.21's `KotlinAndroidTarget` still references `BaseVariant`, removed in AGP 8.9 |
+| 2026-10-06 | 0.7 | Android SDK bootstrap rewritten (use preinstalled SDK or install cmdline-tools itself); `gradlew` mode set to `100755` |
+| 2026-10-06 | 0.7 | Fixed: JitPack 404 on the extractor pin, missing `android.useAndroidX`, libVLC mirror TLS cert |
+| 2026-10-06 | 0.8 | `tv`/`phone` flavours; `src/tv/` manifest overlay (`leanback`, `banner`, `touchscreen` not required) + generated 320×180 banner |
+| 2026-10-06 | 0.8 | `TvUtils` (ported from NewPipe's `AndroidTvUtils`) + `TvShell` D-pad shell with visible focus ring; landscape + keep-screen-on on TV |
+| 2026-10-06 | 0.7/0.8 | ✅ Run `37423534342` **fully green** — `windows-installer`, `android-apk`, `android-tv-release` all uploaded |
