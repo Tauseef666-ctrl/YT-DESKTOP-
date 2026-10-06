@@ -4,7 +4,7 @@
  */
 package app.ytdesktop.android
 
-import android.app.ActivityInfo
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity

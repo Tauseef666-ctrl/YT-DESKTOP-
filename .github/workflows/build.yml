@@ -105,7 +105,9 @@ jobs:
         with:
           name: android-apk
           if-no-files-found: error
-          path: androidApp/build/outputs/apk/debug/*.apk
+          # Product flavours mean AGP writes to outputs/apk/<flavor>/<buildType>/,
+          # so this must be the phone directory, not a bare apk/debug/.
+          path: androidApp/build/outputs/apk/phone/debug/*.apk
 
       # Same code base, `tv` flavour: leanback launcher, 320x180 banner and the
       # D-pad shell. Reuses the SDK + Gradle state set up above, so this is the
