@@ -5,13 +5,17 @@
 package app.ytdesktop.core.model
 
 /**
- * A resolved stream pair ready for playback (plan.md 1.6). The video source
- * is always a video-only stream and the audio source its DASH counterpart;
- * YT Desktop never seeks muxed streams.
+ * A resolved stream ready for playback (plan.md 1.6).
+ *
+ * Normal videos pair a video-only stream with its synchronized DASH audio
+ * counterpart ([audio] non-null) — YT Desktop never seeks muxed streams. Live
+ * broadcasts cannot be split that way: YouTube serves a self-contained HLS (or
+ * DASH) manifest carrying audio AND video, so for live the whole manifest goes
+ * in [video] and [audio] is `null`.
  */
 data class ResolvedPlayback(
     val video: PlaybackSource.Remote,
-    val audio: PlaybackSource.Remote,
+    val audio: PlaybackSource.Remote?,
     val title: String,
     val uploaderName: String,
     val durationSeconds: Long,

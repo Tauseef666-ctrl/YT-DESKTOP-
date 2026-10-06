@@ -32,6 +32,7 @@ import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.VideoStream
 
 /**
@@ -115,6 +116,33 @@ class YoutubeService(
     override suspend fun resolvePlayback(videoUrl: String): ResolvedPlayback =
         io(UserAction.STREAM_RESOLUTION) {
             val info = StreamInfo.getInfo(npService, videoUrl)
+
+            // Live broadcasts (user-reported: "live videos are not playing"):
+            // a video-only + audio-only split never plays a live broadcast.
+            // YouTube's HLS manifest is self-contained (audio + video on one
+            // clock), so hand it to VLC whole. NO input-slave for these.
+            if (info.streamType == StreamType.LIVE_STREAM ||
+                info.streamType == StreamType.AUDIO_LIVE_STREAM
+            ) {
+                val manifest = info.hlsUrl ?: info.dashMpdUrl
+                    ?: throw YtException(
+                        UserAction.STREAM_RESOLUTION,
+                        "This live stream has no playable manifest",
+                    )
+                return@io ResolvedPlayback(
+                    video = PlaybackSource.Remote(
+                        url = manifest,
+                        resolution = "LIVE",
+                        codec = if (manifest.endsWith(".m3u8")) "HLS" else "DASH",
+                    ),
+                    audio = null,
+                    title = info.name,
+                    uploaderName = info.uploaderName,
+                    durationSeconds = info.duration,
+                    thumbnailUrl = info.thumbnails?.firstOrNull()?.url,
+                )
+            }
+
             val video = pickVideoStream(info.videoOnlyStreams)
             val audio = pickAudioStream(info.audioStreams)
             ResolvedPlayback(

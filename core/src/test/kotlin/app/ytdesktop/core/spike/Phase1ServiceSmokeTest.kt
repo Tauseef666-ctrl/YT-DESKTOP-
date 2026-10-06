@@ -87,17 +87,18 @@ class Phase1ServiceSmokeTest {
     fun `resolvePlayback picks a non-AV1 video couple with audio`() = runBlocking {
         val resolved = service.resolvePlayback(KNOWN_VIDEO)
 
+        val audio = checkNotNull(resolved.audio) { "recorded video should resolve a DASH audio component" }
         println(
             "Phase1 resolve: '${resolved.title}' v=${resolved.video.resolution ?: "?"}/" +
                 "${resolved.video.codec ?: "?"} (itag ${resolved.video.itag}) " +
-                "a=${resolved.audio.codec ?: "?"} (itag ${resolved.audio.itag}) " +
+                "a=${audio.codec ?: "?"} (itag ${audio.itag}) " +
                 "${resolved.durationSeconds}s",
         )
 
         assertTrue(resolved.video.url.startsWith("http"), "Video URL is not a URL")
-        assertTrue(resolved.audio.url.startsWith("http"), "Audio URL is not a URL")
+        assertTrue(audio.url.startsWith("http"), "Audio URL is not a URL")
         assertTrue(resolved.video.itag != null, "Video stream has no itag")
-        assertTrue(resolved.audio.itag != null, "Audio stream has no itag")
+        assertTrue(audio.itag != null, "Audio stream has no itag")
         assertTrue(resolved.durationSeconds > 0, "Duration is missing")
         assertTrue(
             !resolved.video.codec.orEmpty().startsWith("av01"),

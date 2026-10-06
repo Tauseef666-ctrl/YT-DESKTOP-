@@ -25,5 +25,8 @@ desktopApp/build/vlc/
 # Runtime data
 *.log
 
+# Private project planning (kept local-only, never pushed)
+plan.md
+
 # vlc-setup staging (regenerated on every build; CI generates its own)
 desktopApp/src/main/appResources/
