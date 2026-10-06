@@ -74,12 +74,3 @@ vlcSetup {
     pathToCopyVlcMacosFilesTo = file("src/main/appResources/macos/vlc")
     pathToCopyVlcWindowsFilesTo = file("src/main/appResources/windows/vlc")
 }
-
-// get.videolan.org is frequently slow and the plugin's Download tasks default to
-// 0 retries / a short read timeout, which makes packaging flaky on CI.
-tasks.withType<de.undercouch.gradle.tasks.download.Download>().configureEach {
-    retries(4)
-    connectTimeout(30_000)
-    readTimeout(5 * 60_000)
-    tempAndMove(true)
-}

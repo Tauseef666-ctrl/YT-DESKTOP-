@@ -6,12 +6,10 @@ package app.ytdesktop.core.downloader
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.CompressionInterceptor
-import okhttp3.ExperimentalCompressionApi
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.brotli.Brotli
+import okhttp3.brotli.BrotliInterceptor
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
@@ -31,7 +29,6 @@ import java.util.concurrent.TimeUnit
  * they go straight from libVLC or the download engine to disk — so a streaming
  * downloader is unnecessary here. See [contentLength] for our own equivalent.
  */
-@OptIn(ExperimentalCompressionApi::class)
 class HttpDownloader(
     val cookieStore: CookieStore = CookieStore(),
     private val userAgent: String = DEFAULT_USER_AGENT,
@@ -44,7 +41,11 @@ class HttpDownloader(
         .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .cookieJar(cookieStore.asCookieJar())
-        .addInterceptor(CompressionInterceptor(Brotli, okhttp3.Gzip))
+        // okhttp decompresses gzip transparently when the caller does not pin
+        // Accept-Encoding itself; BrotliInterceptor covers `br`. Note that
+        // okhttp 4.x has no CompressionInterceptor/Gzip/Brotli API — those only
+        // exist in okhttp 5.x, which would drag the whole toolchain forward.
+        .addInterceptor(BrotliInterceptor)
         .build()
 
     override fun execute(request: Request): Response {

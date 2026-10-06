@@ -25,7 +25,7 @@ import app.ytdesktop.ui.PlaybackPane
 import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
 
-private const val INITIAL_WIDTH: Dp = 1280.dp
+private val INITIAL_WIDTH: Dp = 1280.dp
 
 fun main() {
     // Must happen before VLCJ touches its native library.

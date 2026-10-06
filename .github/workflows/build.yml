@@ -26,7 +26,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build MSI and portable EXE
-        run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageDistributionForCurrentOS --stacktrace
+        run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe --stacktrace
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -48,10 +48,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      # GitHub's ubuntu runners already ship the Android SDK and sdkmanager, and
+      # android-actions/setup-android has been unreliable on ubuntu-24.04. Using
+      # the preinstalled SDK avoids that dependency entirely.
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install SDK platforms
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
