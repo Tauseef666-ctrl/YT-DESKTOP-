@@ -6,6 +6,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_tv:
+        description: 'Also build the Android TV release APK (reenable only after the Windows + Android phone releases are verified)'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -93,6 +99,27 @@ jobs:
       - name: Build MSI and portable EXE
         run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe --stacktrace
 
+      # The packaged app has never been launched anywhere, so assert it stays
+      # alive for a boot window before we call this a release. We deliberately
+      # do NOT assert a window handle: the runner's session may not expose one,
+      # and S3 already proves actual (headless) decode. A crash is what we
+      # want to catch, and a crash is deterministic.
+      - name: Boot smoke - packaged EXE stays alive
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem 'desktopApp/build/compose/binaries/main/exe/*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'no packaged exe found' }
+          Write-Host "booting: $($exe.Name)"
+          $p = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) {
+            throw "packaged app exited during boot smoke (code $($p.ExitCode))"
+          }
+          $hwnd = $p.MainWindowHandle
+          if ($hwnd -eq 0) { Write-Host 'warning: no visible window handle (session has no desktop)' }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "BOOT SMOKE OK: alive after 15s, window handle=$hwnd"
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -152,12 +179,17 @@ jobs:
           path: androidApp/build/outputs/apk/phone/debug/*.apk
 
       # Same code base, `tv` flavour: leanback launcher, 320x180 banner and the
-      # D-pad shell. Reuses the SDK + Gradle state set up above, so this is the
-      # cheap place to build it rather than a third job.
+      # D-pad shell. Kept OUT of the normal pipeline: the Android TV release is
+      # gated behind a manual `workflow_dispatch` with build_tv=true so it only
+      # ships after the Windows + Android phone releases are verified (owner's
+      # order). Note: `github.event.inputs.*` is empty on push/PR, so this step
+      # is skipped there.
       - name: Build Android TV release APK
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_tv == 'true'
         run: ./gradlew -Pyt.android=on :androidApp:assembleTvRelease --stacktrace
 
       - name: Upload Android TV release APK
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_tv == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: android-tv-release
