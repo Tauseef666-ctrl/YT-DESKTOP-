@@ -74,3 +74,16 @@ vlcSetup {
     pathToCopyVlcMacosFilesTo = file("src/main/appResources/macos/vlc")
     pathToCopyVlcWindowsFilesTo = file("src/main/appResources/windows/vlc")
 }
+
+// get.videolan.org intermittently truncates the ~77 MB VLC archive
+// ("Premature end of Content-Length delimited message body ... expected:
+// 77665682; received: 130789"), which failed an otherwise green Windows job.
+// The plugin's Download tasks default to 0 retries, so harden them all.
+tasks.withType<de.undercouch.gradle.tasks.download.Download>().configureEach {
+    retries(5)
+    connectTimeout(30_000)
+    readTimeout(5 * 60_000)
+    // Stage to a temp file and rename only on success, so a partial download
+    // cannot poison a retry.
+    tempAndMove(true)
+}
