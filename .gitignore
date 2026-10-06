@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.apk
+*.aab
+out/
+
+# libVLC binaries (downloaded by the vlc-setup plugin, not committed)
+core/build/vlc/
+desktopApp/build/vlc/
+
+# Runtime data
+*.log

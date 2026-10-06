@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  YT Desktop — an independent YouTube front-end for Windows and Android.
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<resources>
+    <style name="Theme.YTDesktop" parent="android:Theme.Material.NoActionBar" />
+</resources>
