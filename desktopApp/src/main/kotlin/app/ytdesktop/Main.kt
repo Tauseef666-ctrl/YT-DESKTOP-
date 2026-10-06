@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,7 +24,9 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.YoutubeService
-import app.ytdesktop.player.VlcPlayerHarness
+import app.ytdesktop.player.PlayerChrome
+import app.ytdesktop.player.VlcPlayerEngine
+import app.ytdesktop.player.VlcVideoSurface
 import app.ytdesktop.player.rememberVlcPlayer
 import app.ytdesktop.ui.AppShell
 import app.ytdesktop.ui.WindowWidthClass
@@ -67,10 +67,26 @@ fun App() {
         val density = LocalDensity.current
         val widthClass = WindowWidthClass.fromWidth(windowWidth)
         val vlcPlayer = rememberVlcPlayer()
+        val engine = remember { VlcPlayerEngine(vlcPlayer) }
         val service = remember { YoutubeService() }
         var screen by remember { mutableStateOf(AppScreen.Browse) }
         var pendingVideo: StreamItem? by remember { mutableStateOf(null) }
         val onVideoClick: (StreamItem) -> Unit = { pendingVideo = it }
+
+        LaunchedEffect(pendingVideo) {
+            val item = pendingVideo ?: return@LaunchedEffect
+            pendingVideo = null
+            val resolved = runCatching { service.resolvePlayback(item.url) }.getOrNull()
+            if (resolved != null) {
+                engine.play(
+                    source = resolved.video,
+                    title = resolved.title,
+                    companionAudio = resolved.audio,
+                )
+            } else {
+                engine.reportLoadFailure(item.title)
+            }
+        }
 
         Box(
             Modifier
@@ -96,13 +112,8 @@ fun App() {
                 },
                 player = {
                     Column(Modifier.fillMaxSize()) {
-                        Text(
-                            pendingVideo?.title ?: "Nothing playing — pick a video from a feed",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                        VlcPlayerHarness(vlcPlayer, Modifier.weight(1f).fillMaxWidth())
+                        VlcVideoSurface(vlcPlayer, Modifier.weight(1f).fillMaxWidth())
+                        PlayerChrome(engine, Modifier.fillMaxWidth())
                     }
                 },
             )

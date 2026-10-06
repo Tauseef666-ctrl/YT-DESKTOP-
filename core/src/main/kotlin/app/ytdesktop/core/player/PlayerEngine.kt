@@ -16,8 +16,20 @@ interface PlayerEngine {
     /** Latest observable state snapshot (atomic snapshot, never mutated in place). */
     val state: PlayerState
 
-    /** Begins playback of a single [source]; [title] is for the now-playing UI. */
-    fun play(source: PlaybackSource, audioOnly: Boolean = false, title: String? = null)
+    /**
+     * Begins playback of a single [source]; [title] is for the now-playing UI.
+     *
+     * YT Desktop never seeks muxed streams (S1 finding): remote lightly-encoded
+     * fronts are video-only DASH fMP4. When [companionAudio] is supplied (a
+     * Remote audio source) the engine attaches it as libVLC's audio slave so
+     * picture and sound play in sync from the same clock.
+     */
+    fun play(
+        source: PlaybackSource,
+        audioOnly: Boolean = false,
+        title: String? = null,
+        companionAudio: PlaybackSource? = null,
+    )
 
     fun togglePlayPause()
 

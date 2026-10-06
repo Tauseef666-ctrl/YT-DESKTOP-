@@ -110,9 +110,9 @@ class VlcPlayer {
         return created
     }
 
-    fun play(mrl: String) {
+    fun play(mrl: String, options: List<String> = emptyList()) {
         error = null
-        swingComponent().mediaPlayer().media().play(mrl)
+        swingComponent().mediaPlayer().media().play(mrl, *options.toTypedArray())
     }
 
     fun togglePlayPause() {

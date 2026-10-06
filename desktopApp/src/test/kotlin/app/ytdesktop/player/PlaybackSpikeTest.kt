@@ -180,6 +180,45 @@ class PlaybackSpikeTest {
         )
     }
 
+    @Test
+    @Timeout(90)
+    fun `direct video and its DASH audio slave play in sync`() {
+        // The real production path (Slice C / R7): NewPipe hands us a video-only
+        // stream and its audio-only partner. libVLC gets the video as the master
+        // input and the audio as an `input-slave` with the `#audio#` marker.
+        val info = extract()
+        val video = info.videoOnlyStreams
+            .minByOrNull { it.resolution.split("x", "p").first().toIntOrNull() ?: Int.MAX_VALUE }
+            ?: error("extractor returned no video-only stream")
+        val audio = info.audioStreams.firstOrNull()
+            ?: error("extractor returned no audio stream")
+        val videoUrl = video.url ?: error("video-only stream has no url")
+        val audioUrl = audio.url ?: error("audio stream has no url")
+        println("S3 pair: ${video.resolution} (+ audio itag ${audio.itag})")
+
+        val result = playAndProbe(videoUrl, options = listOf(":input-slave=#audio#$audioUrl"))
+
+        println(
+            "  playing=${result.reachedPlaying} advanced=${result.advancedMs}ms " +
+                "video=${result.videoWidth}x${result.videoHeight} " +
+                "audioTracks=${result.audioTracks} error=${result.error}",
+        )
+
+        assertTrue(result.reachedPlaying && !result.error, "video pair never reached the playing state")
+        assertTrue(
+            result.advancedMs > 1_500,
+            "video pair did not advance (stalled at ${result.advancedMs} ms)",
+        )
+        assertTrue(
+            result.videoWidth > 0 && result.videoHeight > 0,
+            "video slave pairing produced no video output",
+        )
+        assertTrue(
+            result.audioTracks >= 1,
+            "audio slave was not attached (0 audio tracks)",
+        )
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private var cachedInfo: StreamInfo? = null
@@ -200,10 +239,11 @@ class PlaybackSpikeTest {
         val videoHeight: Int,
         val videoOutputs: Int,
         val subtitleTracks: Int,
+        val audioTracks: Int,
         val error: Boolean,
     )
 
-    private fun playAndProbe(location: String): Probe {
+    private fun playAndProbe(location: String, options: List<String> = emptyList()): Probe {
         val player: EmbeddedMediaPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer()
 
         val started = CountDownLatch(1)
@@ -219,13 +259,13 @@ class PlaybackSpikeTest {
         })
 
         try {
-            player.media().play(location)
+            player.media().play(location, *options.toTypedArray())
 
             val reachedPlaying = started.await(25, TimeUnit.SECONDS)
             val errored = failed.count == 0L
             if (!reachedPlaying || errored) {
                 dumpVlcLog("did not reach the playing state")
-                return Probe(false, 0, 0, 0, 0, 0, 0, errored)
+                return Probe(false, 0, 0, 0, 0, 0, 0, 0, errored)
             }
 
             // Wait for the clock to move, not just for the state to change: a
@@ -248,6 +288,7 @@ class PlaybackSpikeTest {
                 videoHeight = dimension?.height ?: 0,
                 videoOutputs = player.status().videoOutputs(),
                 subtitleTracks = player.subpictures().trackCount(),
+                audioTracks = player.audio().trackCount(),
                 error = failed.count == 0L,
             )
             if (probe.error || probe.advancedMs < 1_500) {
