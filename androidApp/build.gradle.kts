@@ -4,7 +4,15 @@
  */
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+
+    // No version here on purpose. `org.jetbrains.kotlin.jvm` (applied by :core,
+    // :ui and :desktopApp) drags the whole Kotlin Gradle Plugin onto the build
+    // classpath, which already contains the Android plugin marker. Requesting it
+    // *with* a version makes Gradle fail with
+    //   "the plugin is already on the classpath with an unknown version"
+    // so the version is owned by the version catalog via the kotlin-jvm alias.
+    id("org.jetbrains.kotlin.android")
+
     alias(libs.plugins.compose.compiler)
 }
 
