@@ -99,7 +99,9 @@ compose.desktop {
 // under src/main/appResources so the packaged app needs no system VLC install.
 vlcSetup {
     vlcVersion = libs.versions.vlc.get()
-    shouldCompressVlcFiles = true
+    // Skip UPX during spikes: compressing ~1k plugin DLLs costs minutes per CI
+    // cycle for no functional gain here. Re-enable before shipping the installer.
+    shouldCompressVlcFiles = false
     // MUST stay true. The plugin's built-in keep-list ships only ~20 DLLs and
     // omits everything YT Desktop needs: access/libhttp+libhttps (any network
     // playback), demux/libadaptive (VLC 3 puts HLS *and* DASH there),

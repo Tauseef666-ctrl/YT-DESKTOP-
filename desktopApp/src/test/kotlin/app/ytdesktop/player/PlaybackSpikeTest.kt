@@ -20,16 +20,21 @@ import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
  * Spike **S3** — libVLC playing the things YT Desktop actually needs to play.
  *
  * Three questions, one gate:
- *  1. Can VLC 3.0.21 demux and decode YouTube's **DASH** manifest? (R3, R7)
- *  2. Does it also manage **HLS**, so we have a fallback?
+ *  1. Can VLC 3.0.21 play a YouTube **direct googlevideo video stream** URL?
+ *     (the file NewPipe's `VideoStream.getUrl()` hands us - DASH fMP4)
+ *  2. Does it also play a **direct audio stream** URL?
  *  3. Can it play a **local `.mp4` with an `.srt` sidecar**? (Phase 2.6/2.7)
+ *
+ * Manifests are deliberately NOT tested: VLC 3.x never routes YouTube's
+ * extension-less `hls_variant`/`dash` manifest URLs to its libadaptive
+ * demuxer (they fall to the `ps` probe and stall at 0 ms). Direct stream
+ * URLs are the API NewPipe exposes and the sound of what the app ships.
  *
  * Playback runs headless (`--vout=dummy --aout=dummy`) so it works on a CI
  * runner with no display. That proves demux + decode; the Compose surface
@@ -92,12 +97,17 @@ class PlaybackSpikeTest {
 
     @Test
     @Timeout(90)
-    fun `remote DASH manifest plays`() {
-        val dashUrl = extract().dashMpdUrl
-        assertNotNull(dashUrl, "extractor returned no DASH MPD - nothing to play")
-        println("S3 DASH: $dashUrl")
+    fun `direct googlevideo video-only stream plays`() {
+        // Lowest resolution first: the CI runner decodes with software, and
+        // 144p/240p proves demux + decode without melting the runner.
+        val stream = extract().videoOnlyStreams
+            .minByOrNull {
+                it.resolution.split("x", "p").first().toIntOrNull() ?: Int.MAX_VALUE
+            }
+            ?: error("extractor returned no video-only stream - nothing to play")
+        println("S3 video-only: ${stream.resolution} url=${stream.url}")
 
-        val result = playAndProbe(dashUrl)
+        val result = playAndProbe(stream.url)
 
         println(
             "  playing=${result.reachedPlaying} advanced=${result.advancedMs}ms " +
@@ -105,37 +115,35 @@ class PlaybackSpikeTest {
                 "outputs=${result.videoOutputs} error=${result.error}",
         )
 
-        assertTrue(result.reachedPlaying && !result.error, "DASH never reached the playing state")
+        assertTrue(result.reachedPlaying && !result.error, "direct stream never reached the playing state")
         assertTrue(
             result.advancedMs > 1_500,
-            "DASH playback did not advance (stalled at ${result.advancedMs} ms)",
+            "direct stream did not advance (stalled at ${result.advancedMs} ms)",
         )
         assertTrue(
             result.videoWidth > 0 && result.videoHeight > 0,
-            "DASH audio played but no video was decoded (${result.videoWidth}x" +
-                "${result.videoHeight}) - this is the AV1/codec risk R7",
+            "no video was decoded (${result.videoWidth}x${result.videoHeight}) - the bundled codec set is wrong",
         )
     }
 
     @Test
     @Timeout(90)
-    fun `remote HLS manifest plays`() {
-        val hlsUrl = extract().hlsUrl
-        assertNotNull(hlsUrl, "extractor returned no HLS manifest - no DASH fallback available")
-        println("S3 HLS: $hlsUrl")
+    fun `direct googlevideo audio stream plays`() {
+        val stream = extract().audioStreams.firstOrNull()
+            ?: error("extractor returned no audio stream - nothing to play")
+        println("S3 audio: url=${stream.url}")
 
-        val result = playAndProbe(hlsUrl)
+        val result = playAndProbe(stream.url)
 
         println(
             "  playing=${result.reachedPlaying} advanced=${result.advancedMs}ms " +
-                "length=${result.lengthMs}ms video=${result.videoWidth}x${result.videoHeight} " +
-                "outputs=${result.videoOutputs} error=${result.error}",
+                "length=${result.lengthMs}ms error=${result.error}",
         )
 
-        assertTrue(result.reachedPlaying && !result.error, "HLS never reached the playing state")
+        assertTrue(result.reachedPlaying && !result.error, "audio stream never reached the playing state")
         assertTrue(
             result.advancedMs > 1_500,
-            "HLS playback did not advance (stalled at ${result.advancedMs} ms)",
+            "audio stream did not advance (stalled at ${result.advancedMs} ms)",
         )
     }
 
@@ -172,11 +180,14 @@ class PlaybackSpikeTest {
 
     // ---------------------------------------------------------------- helpers
 
+    private var cachedInfo: StreamInfo? = null
+
     private fun extract(): StreamInfo {
+        cachedInfo?.let { return it }
         NewPipe.init(HttpDownloader(), Localization("en", "US"))
         val service = NewPipe.getServices()
             .first { it.baseUrl.contains("youtube.com", ignoreCase = true) }
-        return StreamInfo.getInfo(service, KNOWN_VIDEO)
+        return StreamInfo.getInfo(service, KNOWN_VIDEO).also { cachedInfo = it }
     }
 
     private data class Probe(
