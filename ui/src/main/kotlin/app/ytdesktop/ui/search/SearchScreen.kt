@@ -5,6 +5,7 @@
 package app.ytdesktop.ui.search
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,12 +34,15 @@ import app.ytdesktop.ui.feed.FeedColumn
 import app.ytdesktop.ui.feed.ResourceFeed
 import kotlinx.coroutines.delay
 
-/** Search with live suggestions (debounced) and a paging result feed. */
+/** Search with live suggestions (debounced), recent-queries, and a paging feed. */
 @Composable
 fun SearchScreen(
     service: StreamingService,
     onVideoClick: (StreamItem) -> Unit,
     modifier: Modifier = Modifier,
+    history: List<String> = emptyList(),
+    onQuerySubmitted: (String) -> Unit = {},
+    onClearHistory: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
@@ -51,8 +55,8 @@ fun SearchScreen(
     }
     LaunchedEffect(submitted) { if (submitted != null) feed.refresh() }
 
-    LaunchedEffect(query, hasFocus) {
-        if (query.isBlank() || !hasFocus) {
+    LaunchedEffect(query, hasFocus, submitted) {
+        if (query.isBlank() || !hasFocus || submitted != null) {
             suggestions = emptyList()
             return@LaunchedEffect
         }
@@ -64,6 +68,7 @@ fun SearchScreen(
         if (value.isBlank()) return
         suggestions = emptyList()
         submitted = value
+        onQuerySubmitted(value)
     }
 
     Column(modifier) {
@@ -80,33 +85,72 @@ fun SearchScreen(
             keyboardActions = KeyboardActions(onSearch = { submit(query) }),
         )
 
-        if (suggestions.isNotEmpty()) {
-            LazyColumn(Modifier.fillMaxWidth()) {
-                items(suggestions, key = { it }) { suggestion ->
-                    Text(
-                        suggestion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { query = suggestion; submit(suggestion) }
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
-                    )
+        when {
+            suggestions.isNotEmpty() -> {
+                LazyColumn(Modifier.fillMaxWidth()) {
+                    items(suggestions, key = { it }) { suggestion ->
+                        Text(
+                            suggestion,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { query = suggestion; submit(suggestion) }
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                        )
+                    }
                 }
             }
-        } else if (submitted == null) {
-            Text(
-                "Search for videos, then press Enter",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
-            )
-        } else {
-            Row(Modifier.fillMaxWidth()) {
-                FeedColumn(
-                    feed = feed,
-                    onVideoClick = onVideoClick,
-                    modifier = Modifier.weight(1f),
+
+            submitted == null && query.isBlank() && history.isNotEmpty() -> {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "Recent searches",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Clear",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onClearHistory),
+                    )
+                }
+                LazyColumn(Modifier.fillMaxWidth()) {
+                    items(history, key = { it }) { term ->
+                        Text(
+                            term,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { query = term; submit(term) }
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                        )
+                    }
+                }
+            }
+
+            submitted == null -> {
+                Text(
+                    "Search for videos, then press Enter",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
                 )
+            }
+
+            else -> {
+                Row(Modifier.fillMaxWidth()) {
+                    FeedColumn(
+                        feed = feed,
+                        onVideoClick = onVideoClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }

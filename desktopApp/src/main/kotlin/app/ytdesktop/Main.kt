@@ -28,6 +28,7 @@ import app.ytdesktop.player.PlayerChrome
 import app.ytdesktop.player.VlcPlayerEngine
 import app.ytdesktop.player.VlcVideoSurface
 import app.ytdesktop.player.rememberVlcPlayer
+import app.ytdesktop.storage.SearchHistoryStore
 import app.ytdesktop.ui.AppShell
 import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
@@ -72,6 +73,8 @@ fun App() {
         var screen by remember { mutableStateOf(AppScreen.Browse) }
         var pendingVideo: StreamItem? by remember { mutableStateOf(null) }
         val onVideoClick: (StreamItem) -> Unit = { pendingVideo = it }
+        val historyStore = remember { SearchHistoryStore.inDefaultDir() }
+        var searchHistory by remember { mutableStateOf(historyStore.load()) }
 
         LaunchedEffect(pendingVideo) {
             val item = pendingVideo ?: return@LaunchedEffect
@@ -103,7 +106,13 @@ fun App() {
                 content = {
                     when (screen) {
                         AppScreen.Browse -> TrendingScreen(service = service, onVideoClick = onVideoClick)
-                        AppScreen.Search -> SearchScreen(service = service, onVideoClick = onVideoClick)
+                        AppScreen.Search -> SearchScreen(
+                            service = service,
+                            onVideoClick = onVideoClick,
+                            history = searchHistory,
+                            onQuerySubmitted = { historyStore.append(it); searchHistory = historyStore.load() },
+                            onClearHistory = { historyStore.clear(); searchHistory = emptyList() },
+                        )
                         AppScreen.Updates -> UpdatePane(
                             info = AppInfo(currentVersion = APP_VERSION, platformLabel = "Windows"),
                             openUrl = ::openBrowser,
