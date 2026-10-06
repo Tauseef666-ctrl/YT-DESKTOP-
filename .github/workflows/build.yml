@@ -48,15 +48,27 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # GitHub's ubuntu runners already ship the Android SDK and sdkmanager, and
-      # android-actions/setup-android has been unreliable on ubuntu-24.04. Using
-      # the preinstalled SDK avoids that dependency entirely.
-      - name: Accept Android SDK licenses
+      # android-actions/setup-android has been unreliable on the ubuntu-24.04
+      # runner image, and `sdkmanager` is not guaranteed to be on PATH. This step
+      # works either way: use the preinstalled SDK if present, otherwise install
+      # the command-line tools ourselves.
+      - name: Set up Android SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-
-      - name: Install SDK platforms
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
+            SDK_ROOT="$PWD/android-sdk"
+            echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            curl -fsSL -o /tmp/cmdtools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q /tmp/cmdtools.zip -d "$SDK_ROOT/cmdline-tools"
+            mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+          fi
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          chmod +x "$SDKMANAGER" || true
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - uses: gradle/actions/setup-gradle@v4
 

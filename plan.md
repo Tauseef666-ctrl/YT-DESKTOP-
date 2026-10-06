@@ -36,17 +36,15 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 
 - [x] **0.1** Install JDK 21, verify `java -version`
 - [x] **0.2** Scaffold Gradle project — settings, root build, version catalog, wrapper 8.13
-- [x] **0.3** Compose Desktop shell, adaptive layout (3 pane widths) — *written, never compiled*
+- [x] **0.3** Compose Desktop shell, adaptive layout (3 pane widths) — compiles
 - [ ] **0.4** VLCJ 4.11.0 + Direct Rendering video surface — dependency wired, surface pending
-- [x] **0.5** `ir.mahozad.vlc-setup` + bundle libVLC into the installer — *written, never executed*
-- [ ] **0.6** `packageMsi` → `YTDesktop-0.1.0.msi` — config written, task never run
-- [x] **0.7** GitHub Actions workflow for MSI **and** APK — *written, needs first CI run*
+- [x] **0.5** `ir.mahozad.vlc-setup` + bundle libVLC into the installer — verified by CI
+- [x] **0.6** `packageMsi` + `packageExe` → ✅ **green CI run** (run `37416812250`)
+- [x] **0.7** GitHub Actions workflow for MSI **and** APK — Windows job green; APK job still fixing SDK setup
 
-> **Verification status:** no Gradle task has completed successfully yet. On the dev
-> machine `dl.google.com` is unreachable and Maven Central is very slow, so the local
-> network cannot resolve the Kotlin compiler jar. **GitHub Actions is the verification
-> path** for compilation, packaging and the APK — treat every unchecked/asterisked item
-> above as unproven until a green CI run exists.
+> **Verification status:** `:core`, `:ui` and `:desktopApp` compile locally and the
+> Windows MSI + EXE job is green in CI. The Android APK job has not yet produced an
+> APK — SDK bootstrap in CI is the remaining blocker.
 
 ### Spikes — ALL must pass before Phase 1 starts
 
