@@ -12,6 +12,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Phase 0 gate. These tests hit YouTube over the network and decide whether
+  # Phase 1 can proceed at all, so they run first and on their own box.
+  spikes:
+    name: Extraction spikes (S1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: S1 - YouTube search + stream resolution from a plain JVM
+        run: ./gradlew :core:test --tests '*SpikeTest*' --stacktrace
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spike-test-report
+          path: core/build/reports/tests/
+
   windows:
     name: Windows installer + portable exe
     runs-on: windows-latest

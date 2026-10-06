@@ -48,12 +48,14 @@ endorsed by, or named NewPipe.** See <https://newpipe-ev.de/policy/trademark/>.
 > debug), `android-tv-release` (8.1 MB TV release). Android 112 s, Windows 196 s,
 > ~3m16s wall clock.
 >
-> Remaining Phase 0 work is the **0.4** video surface and spikes **S1–S3**.
+> Remaining Phase 0 work is spikes **S1–S3** (0.4 video surface is done).
 
 ### Spikes — ALL must pass before Phase 1 starts
 
-- [ ] **S1** YouTube search + stream resolution from a plain JVM (no WebView)
-- [ ] **S2** PoToken via `bgutil-pot.exe` subprocess (cookies **OFF**)
+- [x] **S1** YouTube search + stream resolution from a plain JVM (no WebView) — ✅ `YoutubeExtractionSpikeTest` green locally and enforced as the `spikes` CI job. Search returned 20 items + next page; stream extraction returned 5 audio streams, a DASH MPD and an HLS manifest; a ranged GET on a `googlevideo.com` URL returned **HTTP 206 with 1024 bytes**. No PoToken and no cookies were needed.
+  - **Finding:** `videoStreams = 0` — YouTube serves *no* muxed progressive stream to this client, so remote playback **must** go through DASH (separate audio + video) or the DASH/HLS manifest. Feeds R7 and the shape of Phase 1.6.
+  - **Finding:** `NewPipe.getServiceByUrl()` only accepts URLs that look like a *stream* link; a bare homepage throws `ExtractionException`. Select the service by `baseUrl` instead.
+- [ ] **S2** PoToken via `bgutil-pot.exe` subprocess (cookies **OFF**) — urgency dropped: S1 resolved streams and served bytes without one. Still required to confirm *when* it becomes necessary (region, format, quota).
 - [ ] **S3** libVLC Direct Rendering: remote DASH + local `.mp4` + `.srt` in one window
 
 ---
@@ -162,7 +164,7 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 
 | ID | Risk | Status | Mitigation |
 |---|---|---|---|
-| **R1** | YouTube extraction from a plain JVM | 🔴 open | Gated by spike **S1** |
+| **R1** | YouTube extraction from a plain JVM | 🟢 handled | Spike **S1** green: search + stream extraction + byte-level probe (HTTP 206) with no WebView, no PoToken, no cookies. Enforced by the `spikes` CI job |
 | **R2** | PoToken requirement | 🔴 open | Solution known — gated by spike **S2** |
 | **R3** | libVLC DASH/HLS + subtitle rendering | 🔴 open | Gated by spike **S3** |
 | **R4** | YouTube OTF / post-live DVR manifest synthesis has no libVLC equivalent | 🟡 accepted | Feed libVLC direct progressive/HLS URLs; accept fidelity gap |
@@ -206,3 +208,4 @@ androidApp/  Android application → .apk (only in settings when -Pyt.android=on
 | 2026-10-06 | 0.8 | `TvUtils` (ported from NewPipe's `AndroidTvUtils`) + `TvShell` D-pad shell with visible focus ring; landscape + keep-screen-on on TV |
 | 2026-10-06 | 0.7/0.8 | ✅ Run `37423534342` **fully green** — `windows-installer`, `android-apk`, `android-tv-release` all uploaded |
 | 2026-10-06 | 0.4 | `VlcPlayer` (wraps `EmbeddedMediaPlayerComponent`, mirrors libVLC events into snapshot state) + `VlcVideoSurface` `SwingPanel` host + `VlcPlayerHarness` URL/transport row for spike S3. Compiles locally |
+| 2026-10-06 | S1 | ✅ Green locally (12 s). New `spikes` CI job runs `:core:test --tests '*SpikeTest*'`. YouTube returned 20 search results, 5 audio streams, DASH + HLS, and served 1024 bytes over HTTP 206 — **R1 closed** |
