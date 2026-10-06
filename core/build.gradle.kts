@@ -24,6 +24,7 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit5)
+    testImplementation(libs.okhttp.mockwebserver)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
