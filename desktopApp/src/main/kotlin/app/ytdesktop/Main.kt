@@ -25,8 +25,17 @@ import app.ytdesktop.ui.AppShell
 import app.ytdesktop.ui.PlaceholderPane
 import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
+import app.ytdesktop.ui.nav.AppScreen
+import app.ytdesktop.ui.nav.NavigationPane
+import app.ytdesktop.ui.update.AppInfo
+import app.ytdesktop.ui.update.UpdatePane
+import java.awt.Desktop
+import java.net.URI
 
 private val INITIAL_WIDTH: Dp = 1280.dp
+
+// Mirrors the Gradle `yt.version` property (default "0.1.0").
+private const val APP_VERSION = "0.1.0"
 
 fun main() {
     // Must happen before VLCJ touches its native library.
@@ -50,6 +59,7 @@ fun App() {
         val density = LocalDensity.current
         val widthClass = WindowWidthClass.fromWidth(windowWidth)
         val vlcPlayer = rememberVlcPlayer()
+        var screen by remember { mutableStateOf(AppScreen.Browse) }
 
         Box(
             Modifier
@@ -60,10 +70,26 @@ fun App() {
         ) {
             AppShell(
                 widthClass = widthClass,
-                navigation = { PlaceholderPane("Nav") },
-                content = { PlaceholderPane("Browse / Search") },
+                navigation = {
+                    NavigationPane(screen = screen, onSelect = { screen = it })
+                },
+                content = {
+                    when (screen) {
+                        AppScreen.Browse -> PlaceholderPane("Browse")
+                        AppScreen.Search -> PlaceholderPane("Search")
+                        AppScreen.Updates -> UpdatePane(
+                            info = AppInfo(currentVersion = APP_VERSION, platformLabel = "Windows"),
+                            openUrl = ::openBrowser,
+                        )
+                    }
+                },
                 player = { VlcPlayerHarness(vlcPlayer, Modifier.fillMaxSize()) },
             )
         }
     }
+}
+
+private fun openBrowser(url: String) {
+    runCatching { Desktop.getDesktop().browse(URI(url)) }
+        .onFailure { println("openBrowser: $url -> ${it.message}") }
 }
