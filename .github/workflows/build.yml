@@ -25,6 +25,29 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # The plugin hardcodes https://get.videolan.org, which 302-redirects to a
+      # pool of third-party mirrors. One of them (mirror.ajl.albony.in) has served
+      # an expired TLS cert, and the JVM rejects that with
+      # SSLHandshakeException(certificate_expired) - no amount of task retries
+      # helps. Seed the archive from VideoLAN's own host instead; the plugin's
+      # Download task uses overwrite(false), so it skips its own fetch afterwards.
+      - name: Seed libVLC archive
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path 'gradle/libs.versions.toml' -Pattern '^vlc = "([^"]+)"').Matches[0].Groups[1].Value
+          $dir = Join-Path $env:USERPROFILE ".gradle\vlcSetup"
+          $file = Join-Path $dir "vlc-$v.zip"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          if ((Test-Path $file) -and ((Get-Item $file).Length -gt 70MB)) {
+            Write-Host "already present: $file"
+          } else {
+            $src = "https://download.videolan.org/pub/videolan/vlc/$v/win64/vlc-$v-win64.zip"
+            curl.exe -fsSL --retry 5 --retry-delay 5 --connect-timeout 30 --max-time 900 -o "$file.part" $src
+            if ((Get-Item "$file.part").Length -lt 70MB) { throw "VLC archive truncated" }
+            Move-Item "$file.part" $file -Force
+          }
+          Write-Host "vlc archive: $((Get-Item $file).Length) bytes"
+
       - name: Build MSI and portable EXE
         run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe --stacktrace
 
@@ -83,3 +106,16 @@ jobs:
           name: android-apk
           if-no-files-found: error
           path: androidApp/build/outputs/apk/debug/*.apk
+
+      # Same code base, `tv` flavour: leanback launcher, 320x180 banner and the
+      # D-pad shell. Reuses the SDK + Gradle state set up above, so this is the
+      # cheap place to build it rather than a third job.
+      - name: Build Android TV release APK
+        run: ./gradlew -Pyt.android=on :androidApp:assembleTvRelease --stacktrace
+
+      - name: Upload Android TV release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-tv-release
+          if-no-files-found: error
+          path: androidApp/build/outputs/apk/tv/release/*.apk
