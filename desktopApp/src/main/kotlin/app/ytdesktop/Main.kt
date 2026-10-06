@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.ytdesktop.core.errors.ErrorInfo
+import app.ytdesktop.core.errors.UserAction
+import app.ytdesktop.core.errors.YtException
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.YoutubeService
 import app.ytdesktop.player.PlayerChrome
@@ -82,15 +85,20 @@ fun App() {
         LaunchedEffect(pendingVideo) {
             val item = pendingVideo ?: return@LaunchedEffect
             pendingVideo = null
-            val resolved = runCatching { service.resolvePlayback(item.url) }.getOrNull()
-            if (resolved != null) {
+            try {
+                val resolved = service.resolvePlayback(item.url)
                 engine.play(
                     source = resolved.video,
                     title = resolved.title,
                     companionAudio = resolved.audio,
                 )
-            } else {
-                engine.reportLoadFailure(item.title)
+            } catch (e: YtException) {
+                engine.reportLoadFailure(item.title, e.errorInfo)
+            } catch (e: Exception) {
+                engine.reportLoadFailure(
+                    item.title,
+                    ErrorInfo(UserAction.STREAM_RESOLUTION, e.message ?: "Could not load this video"),
+                )
             }
         }
 

@@ -17,6 +17,7 @@ enum class UserAction {
     STREAM_RESOLUTION,
     VIDEO_PAGE,
     PLAYBACK,
+    UNKNOWN,
 }
 
 /** Immutable, serialisable description of a failure, safe for the UI layer. */

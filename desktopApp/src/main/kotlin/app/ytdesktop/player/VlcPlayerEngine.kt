@@ -4,6 +4,7 @@
  */
 package app.ytdesktop.player
 
+import app.ytdesktop.core.errors.ErrorInfo
 import app.ytdesktop.core.model.PlaybackSource
 import app.ytdesktop.core.player.PlayerEngine
 import app.ytdesktop.core.player.PlayerState
@@ -68,9 +69,9 @@ class VlcPlayerEngine(private val player: VlcPlayer) : PlayerEngine {
     override fun release() = player.release()
 
     /** Surfaces a failure that happened before [play] (e.g. stream resolution). */
-    fun reportLoadFailure(what: String) {
+    fun reportLoadFailure(what: String, info: ErrorInfo) {
         titleOverride = what
-        errorOverride = "Could not load this video — try again in a moment"
+        errorOverride = info.message
     }
 
     /**

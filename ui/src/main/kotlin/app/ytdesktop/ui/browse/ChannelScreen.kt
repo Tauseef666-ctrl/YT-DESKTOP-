@@ -32,11 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.ytdesktop.core.errors.ErrorInfo
+import app.ytdesktop.core.errors.UserAction
+import app.ytdesktop.core.errors.YtException
 import app.ytdesktop.core.model.ChannelPage
 import app.ytdesktop.core.model.ChannelTab
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.StreamingService
 import app.ytdesktop.ui.common.SurfaceChip
+import app.ytdesktop.ui.errors.ErrorCard
 import app.ytdesktop.ui.feed.FeedColumn
 import app.ytdesktop.ui.feed.ResourceFeed
 import app.ytdesktop.ui.feed.compactCount
@@ -59,16 +63,23 @@ fun ChannelScreen(
 ) {
     val scope = rememberCoroutineScope()
     var page by remember(channelUrl) { mutableStateOf<ChannelPage?>(null) }
-    var loadFailed by remember(channelUrl) { mutableStateOf(false) }
+    var channelError by remember(channelUrl) { mutableStateOf<ErrorInfo?>(null) }
     var selectedTab by remember(channelUrl) { mutableStateOf<ChannelTab?>(null) }
+    var retryKey by remember(channelUrl) { mutableStateOf(0) }
 
-    LaunchedEffect(channelUrl) {
-        loadFailed = false
+    LaunchedEffect(channelUrl, retryKey) {
+        channelError = null
         selectedTab = null
-        val result = runCatching { service.channelInfo(channelUrl) }
-        page = result.getOrNull()
-        loadFailed = result.isFailure
-        result.getOrNull()?.tabs?.firstOrNull()?.let { selectedTab = it }
+        runCatching { service.channelInfo(channelUrl) }
+            .onSuccess { info ->
+                page = info
+                info.tabs.firstOrNull()?.let { selectedTab = it }
+            }
+            .onFailure { e ->
+                page = null
+                channelError = (e as? YtException)?.errorInfo
+                    ?: ErrorInfo(UserAction.CHANNEL, "Could not load this channel")
+            }
     }
 
     Column(modifier) {
@@ -88,7 +99,15 @@ fun ChannelScreen(
 
         val info = page
         when {
-            info != null && !loadFailed -> {
+            channelError != null -> {
+                ErrorCard(
+                    info = channelError!!,
+                    onRetry = { retryKey++ },
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+
+            info != null -> {
                 ChannelHeader(info)
                 TabChips(
                     tabs = info.tabs,
@@ -111,15 +130,6 @@ fun ChannelScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
                 }
-            }
-
-            loadFailed -> {
-                Text(
-                    "Could not load this channel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
-                )
             }
 
             else -> {

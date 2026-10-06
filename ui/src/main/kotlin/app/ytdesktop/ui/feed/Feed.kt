@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.ytdesktop.core.model.PageItem
 import app.ytdesktop.core.model.StreamItem
+import app.ytdesktop.ui.errors.ErrorCard
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -90,16 +90,10 @@ fun FeedColumn(
         when {
             feed.loading -> item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } }
             feed.error != null -> item {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            feed.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Button(onClick = { feed.loadMore() }) { Text("Retry") }
-                    }
-                }
+                ErrorCard(
+                    info = feed.error!!,
+                    onRetry = if (feed.items.isEmpty()) feed::refresh else feed::loadMore,
+                )
             }
             feed.items.isEmpty() && !feed.loading -> item {
                 Text(
