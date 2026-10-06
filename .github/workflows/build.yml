@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      publish_release:
+        description: 'Attach the built MSI/EXE/APK to the v* GitHub release (assets upload from a GitHub runner, not this machine)'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -195,3 +200,47 @@ jobs:
           name: android-tv-release
           if-no-files-found: error
           path: androidApp/build/outputs/apk/tv/release/*.apk
+
+  # Owner-triggered with publish_release=true: attach the CI-built installers
+  # to the v* release. Assets are uploaded from GitHub's own runners because
+  # the owner's local network cannot stream large uploads to uploads.github.com
+  # (it drops them mid-body with schannel timeouts / connection aborts), while
+  # downloads work fine.
+  publish:
+    name: Publish release assets
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+
+      - name: Upload MSI/EXE/APK to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's/^yt\.version=//p' gradle.properties)"
+          TAG="v$VERSION"
+          echo "release tag: $TAG"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "YT Desktop $VERSION" \
+              --notes "CI-built installers. Windows MSI/EXE carry every Phase 1 feature; the Android APK is the installable phone shell."
+          fi
+          for f in $(find dist -type f \( -name '*.msi' -o -name '*.exe' -o -name '*.apk' \)); do
+            echo "== uploading $f"
+            gh release upload "$TAG" "$f" --clobber
+          done
+          echo "== assets now attached:"
+          gh release view "$TAG" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
