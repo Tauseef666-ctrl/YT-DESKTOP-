@@ -38,10 +38,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # S1 (extraction gate) plus the Phase 1 service layer smoke tests. Both
-      # hit YouTube over the network and are kept tiny and explicitly selected.
-      - name: S1 + Phase 1 service smoke tests
-        run: ./gradlew :core:test --tests '*SpikeTest*' --tests '*Phase1*' --stacktrace
+      # Full :core:test: the S1 extraction gate and Phase 1 service smoke tests
+      # hit YouTube over the network (kept tiny/lenient), and the offline suite
+      # — DownloadEngineTest (phase 2.1/2.2), SrtFromTtmlTest (2.3) and parser
+      # tests — runs unconditionally on every platform box.
+      - name: Core tests (network spikes + offline suite)
+        run: ./gradlew :core:test --stacktrace
 
       - name: Upload test report
         if: failure()
