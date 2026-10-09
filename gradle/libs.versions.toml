@@ -10,11 +10,10 @@ coroutines = "1.10.1"
 serialization = "1.8.0"
 
 # Libraries
-# NOTE: intentionally a 39-char prefix of the commit below, not the full SHA-1.
-# JitPack periodically purges artifacts, and the exact 40-char hash returns 404
-# while the shortened ref still resolves to the same commit. This is the same
-# workaround NewPipe's own catalog documents.
-newpipe-extractor = "13a655fe53e0c3065f88725fc1fb594c3ede016"
+# NewPipeExtractor pinned to a release tag (JitPack serves them). v0.26.x
+# carries PO-token/POT support that YouTube now requires for live streams;
+# the older 2026-08 snapshot could not resolve ANY live broadcast.
+newpipe-extractor = "v0.26.5"
 okhttp = "4.12.0"
 vlcj = "4.11.0"
 vlc = "3.0.21"              # bundled libVLC. NOTE: no AV1/H.266 decode support

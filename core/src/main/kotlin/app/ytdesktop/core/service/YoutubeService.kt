@@ -121,25 +121,23 @@ class YoutubeService(
             // a video-only + audio-only split never plays a live broadcast.
             // YouTube's HLS manifest is self-contained (audio + video on one
             // clock), so hand it to VLC whole. NO input-slave for these.
+            liveManifestOrNull(info.streamType, info.hlsUrl, info.dashMpdUrl)
+                ?.let { manifest ->
+                    return@io ResolvedPlayback(
+                        video = manifest,
+                        audio = null,
+                        title = info.name,
+                        uploaderName = info.uploaderName,
+                        durationSeconds = info.duration,
+                        thumbnailUrl = info.thumbnails?.firstOrNull()?.url,
+                    )
+                }
             if (info.streamType == StreamType.LIVE_STREAM ||
                 info.streamType == StreamType.AUDIO_LIVE_STREAM
             ) {
-                val manifest = info.hlsUrl ?: info.dashMpdUrl
-                    ?: throw YtException(
-                        UserAction.STREAM_RESOLUTION,
-                        "This live stream has no playable manifest",
-                    )
-                return@io ResolvedPlayback(
-                    video = PlaybackSource.Remote(
-                        url = manifest,
-                        resolution = "LIVE",
-                        codec = if (manifest.endsWith(".m3u8")) "HLS" else "DASH",
-                    ),
-                    audio = null,
-                    title = info.name,
-                    uploaderName = info.uploaderName,
-                    durationSeconds = info.duration,
-                    thumbnailUrl = info.thumbnails?.firstOrNull()?.url,
+                throw YtException(
+                    UserAction.STREAM_RESOLUTION,
+                    "This live stream has no playable manifest",
                 )
             }
 
@@ -246,6 +244,29 @@ class YoutubeService(
             url = item.url,
             thumbnailUrl = null,
             subscriberCount = null,
+        )
+    }
+
+    /**
+     * Pure live-broadcast resolution rule, offline-testable: a live stream is
+     * a self-contained manifest (HLS preferred, DASH fallback). Returns null
+     * when [streamType] is not a live variant or no manifest is available.
+     */
+    internal fun liveManifestOrNull(
+        streamType: StreamType,
+        hlsUrl: String?,
+        dashMpdUrl: String?,
+    ): PlaybackSource.Remote? {
+        if (streamType != StreamType.LIVE_STREAM &&
+            streamType != StreamType.AUDIO_LIVE_STREAM
+        ) {
+            return null
+        }
+        val manifest = hlsUrl ?: dashMpdUrl ?: return null
+        return PlaybackSource.Remote(
+            url = manifest,
+            resolution = "LIVE",
+            codec = if (manifest.endsWith(".m3u8")) "HLS" else "DASH",
         )
     }
 
