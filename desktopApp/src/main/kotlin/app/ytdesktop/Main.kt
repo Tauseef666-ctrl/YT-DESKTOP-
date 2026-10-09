@@ -57,7 +57,7 @@ import kotlinx.coroutines.withContext
 private val INITIAL_WIDTH: Dp = 1280.dp
 
 // Mirrors the Gradle `yt.version` property (default "0.1.0").
-private const val APP_VERSION = "0.1.0"
+private const val APP_VERSION = "0.2.0"
 
 fun main() {
     // Must happen before VLCJ touches its native library.

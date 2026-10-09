@@ -5,43 +5,59 @@ Kotlin, Compose Multiplatform, and libVLC.
 
 No account. No tracking. No Google Play Services.
 
-> **Status:** active development. See [`plan.md`](plan.md) for build progress.
+> **Status:** early public release. Windows is the primary, fully packaged target.
+> Android is an installable shell whose feature screens are still being built out.
 
 ---
 
-## Features
+## Install (Windows)
 
-### Planned (Phase 0–2, in progress)
+1. Download the installer from the [Releases](../../releases) page:
+   - `YT Desktop-<version>.msi` — standard installer, or
+   - `YT Desktop-<version>.exe` — portable, no installation.
+2. Run it.
 
-- Browse trending / kiosk content
-- Search with live suggestions and local search history
-- Channel pages with all playable tabs
-- **Unified in-app player** — plays remote streams *and* your downloaded files with
-  the same controls, same window
-- Multi-threaded resumable downloads (512 KiB blocks)
-- Audio-only downloads (M4A / Opus)
-- Subtitle downloads, converted TTML → SRT, auto-loaded from a sidecar file
-- Local media library — point it at a folder and play it
-- Always-on-top mini player
-- Adaptive layout across three window widths
-- Global media-key support and tray integration
+### First run and the SmartScreen warning
 
-### Not yet implemented
+The build is not yet code-signed, so Windows SmartScreen may show
+*"Windows protected your PC."* This is expected for a new, unsigned app. To continue,
+click **More info → Run anyway**. A signed build is planned.
 
-Playlists, subscriptions, channel groups, feed, history, comments, settings parity,
-backup/restore, import/export. See `plan.md` for the full roadmap.
+If **Smart App Control** blocks it, you may need to allow the app or turn Smart App
+Control off in *Windows Security → App & browser control*.
+
+### Requirements
+
+- Windows 10/11, 64-bit.
+- libVLC is **bundled** — nothing else to install.
 
 ---
 
-## Downloads
+## What you can do today
 
-| Output | Platform | Status |
-|---|---|---|
-| `.msi` installer + portable `.exe` | Windows x64 | build in progress |
-| `.apk` | Android | build in progress |
+- **Browse** trending / kiosk content.
+- **Search** YouTube, with recent-query history.
+- **Open channels** and play from their content tabs.
+- **Play videos and live streams** in the built-in player: play/pause, ±10s, a
+  draggable seek bar, queue with auto-advance, and fullscreen.
+- **Play videos you already downloaded** — open **Library**, pick the folder where
+  your files live (for example NewPipe's download folder), and play them in the same
+  player. Subtitle files (`srt`/`vtt`/`ass`/`ssa`) sitting next to a video are loaded
+  automatically.
 
-Both are produced by GitHub Actions. Grab them from the
-[Releases](../../releases) page or the workflow artifacts.
+### Not yet exposed in the UI
+
+The resumable download engine (512 KiB blocks) is implemented in `core`, but the
+in-app download buttons and queue are not wired into this release yet. Playlists,
+subscriptions, and feed are also still to come.
+
+---
+
+## Android
+
+A debug `.apk` is published from CI. It installs and launches, but the feature
+screens are still being built out; treat it as a preview. Android TV is intentionally
+withheld until the Windows and Android-phone releases are verified.
 
 ---
 
@@ -64,8 +80,11 @@ Both are produced by GitHub Actions. Grab them from the
 ### Android
 
 ```bash
-./gradlew :androidApp:assembleDebug
+./gradlew -Pyt.android=on :androidApp:assembleDebug
 ```
+
+All installers and APKs are produced by GitHub Actions; see
+[`.github/workflows/build.yml`](.github/workflows/build.yml).
 
 ---
 
@@ -81,16 +100,13 @@ androidApp/  Android shell
 `core` is plain JVM bytecode consumed by both apps, so all the logic — service
 abstraction, extraction, downloads, muxing, the player engine — is written once.
 
----
-
-## Project layout
-
 | Module | Contents |
 |---|---|
 | `core/service` | Pluggable `StreamingService` abstraction (currently YouTube only) |
 | `core/downloader` | `NewPipeExtractor` `Downloader` implementation over OkHttp |
 | `core/player` | `PlayerEngine` interface + the playback state machine |
-| `core/download` | Download engine and post-processing muxers |
+| `core/library` | Local media scanner (media files + sidecar subtitles) |
+| `core/download` | Resumable download engine and post-processing muxers |
 | `core/streams` | Pure-JVM MP4/WebM/Ogg/SRT container readers and writers |
 
 ---

@@ -236,7 +236,7 @@ jobs:
           echo "release tag: $TAG"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --title "YT Desktop $VERSION" \
-              --notes "CI-built installers. Windows MSI/EXE carry every Phase 1 feature; the Android APK is the installable phone shell."
+              --notes-file RELEASE_NOTES.md
           fi
           for f in $(find dist -type f \( -name '*.msi' -o -name '*.exe' -o -name '*.apk' \)); do
             echo "== uploading $f"
