@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.ytdesktop.core.download.DownloadManager
+import app.ytdesktop.core.download.DownloadPart
+import app.ytdesktop.core.download.DownloadRequest
+import app.ytdesktop.core.errors.YtException
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.YoutubeService
 import app.ytdesktop.player.PlayQueueController
@@ -35,6 +39,7 @@ import app.ytdesktop.ui.WindowWidthClass
 import app.ytdesktop.ui.YtDesktopTheme
 import app.ytdesktop.ui.browse.ChannelScreen
 import app.ytdesktop.ui.browse.TrendingScreen
+import app.ytdesktop.ui.download.DownloadsScreen
 import app.ytdesktop.ui.nav.AppScreen
 import app.ytdesktop.ui.nav.NavigationPane
 import app.ytdesktop.ui.search.SearchScreen
@@ -42,6 +47,9 @@ import app.ytdesktop.ui.update.AppInfo
 import app.ytdesktop.ui.update.UpdatePane
 import java.awt.Desktop
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlinx.coroutines.launch
 
 private val INITIAL_WIDTH: Dp = 1280.dp
 
@@ -80,6 +88,53 @@ fun App() {
         val onChannelClick: (String) -> Unit = { openedChannel = it }
         val historyStore = remember { SearchHistoryStore.inDefaultDir() }
         var searchHistory by remember { mutableStateOf(historyStore.load()) }
+        val downloadsDir = remember {
+            Path.of(System.getProperty("user.home"), ".yt-desktop", "downloads")
+                .also { runCatching { Files.createDirectories(it) } }
+        }
+        val downloads = remember { DownloadManager() }
+        var downloadNotice by remember { mutableStateOf<String?>(null) }
+        val onDownload: (StreamItem) -> Unit = { item ->
+            scope.launch {
+                runCatching { service.resolveDownload(item.url) }
+                    .onSuccess { resolved ->
+                        val base = safeFileName(resolved.title)
+                        val parts = buildList {
+                            resolved.video?.let { video ->
+                                add(
+                                    DownloadPart(
+                                        label = "video",
+                                        request = DownloadRequest(
+                                            url = video.url,
+                                            destination = downloadsDir.resolve("$base [video].${video.extension}"),
+                                        ),
+                                    ),
+                                )
+                            }
+                            add(
+                                DownloadPart(
+                                    label = "audio",
+                                    request = DownloadRequest(
+                                        url = resolved.audio.url,
+                                        destination = downloadsDir.resolve("$base [audio].${resolved.audio.extension}"),
+                                    ),
+                                ),
+                            )
+                        }
+                        downloads.enqueue(resolved.title, parts)
+                        downloadNotice = null
+                        screen = AppScreen.Downloads
+                        openedChannel = null
+                    }
+                    .onFailure { e ->
+                        downloadNotice = (e as? YtException)?.message
+                            ?: e.message
+                            ?: "Could not start download"
+                        screen = AppScreen.Downloads
+                        openedChannel = null
+                    }
+            }
+        }
 
         Box(
             Modifier
@@ -108,12 +163,14 @@ fun App() {
                             onBack = { openedChannel = null },
                             onVideoClick = onVideoClick,
                             onChannelClick = onChannelClick,
+                            onDownload = onDownload,
                         )
                     } else when (screen) {
                         AppScreen.Browse -> TrendingScreen(
                             service = service,
                             onVideoClick = onVideoClick,
                             onChannelClick = onChannelClick,
+                            onDownload = onDownload,
                         )
                         AppScreen.Search -> SearchScreen(
                             service = service,
@@ -122,6 +179,12 @@ fun App() {
                             onQuerySubmitted = { historyStore.append(it); searchHistory = historyStore.load() },
                             onClearHistory = { historyStore.clear(); searchHistory = emptyList() },
                             onChannelClick = onChannelClick,
+                            onDownload = onDownload,
+                        )
+                        AppScreen.Downloads -> DownloadsScreen(
+                            manager = downloads,
+                            notice = downloadNotice,
+                            onOpenFolder = ::openFolder,
                         )
                         AppScreen.Updates -> UpdatePane(
                             info = AppInfo(currentVersion = APP_VERSION, platformLabel = "Windows"),
@@ -146,7 +209,26 @@ player = {
                 },
             )
         }
+        DownloadTray(
+            manager = downloads,
+            onOpenDownloads = {
+                screen = AppScreen.Downloads
+                openedChannel = null
+            },
+        )
     }
+}
+
+private fun openFolder(folder: Path) {
+    runCatching { Desktop.getDesktop().open(folder.toFile()) }
+        .onFailure { println("openFolder: $folder -> ${it.message}") }
+}
+
+private fun safeFileName(title: String): String {
+    val cleaned = title.map { ch ->
+        if (ch.isLetterOrDigit() || ch in " -_().&,'![]") ch else '_'
+    }.joinToString("").trim().trimEnd('.').take(120)
+    return cleaned.ifBlank { "video" }
 }
 
 private fun openBrowser(url: String) {

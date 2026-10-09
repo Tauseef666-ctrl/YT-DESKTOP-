@@ -61,6 +61,7 @@ fun ChannelScreen(
     onVideoClick: (StreamItem) -> Unit,
     modifier: Modifier = Modifier,
     onChannelClick: (String) -> Unit = {},
+    onDownload: ((StreamItem) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     var page by remember(channelUrl) { mutableStateOf<ChannelPage?>(null) }
@@ -121,6 +122,7 @@ fun ChannelScreen(
                         feed = rememberFeed(scope = scope, tabUrl = tab.url, service = service),
                         onVideoClick = onVideoClick,
                         onChannelClick = onChannelClick,
+                        onDownload = onDownload,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
                 }

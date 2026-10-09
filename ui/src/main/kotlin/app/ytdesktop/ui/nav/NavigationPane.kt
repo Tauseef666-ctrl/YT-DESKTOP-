@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 enum class AppScreen(val label: String) {
     Browse("Browse"),
     Search("Search"),
+    Downloads("Downloads"),
     Updates("Updates"),
     ;
 
@@ -36,6 +37,7 @@ enum class AppScreen(val label: String) {
         get() = when (this) {
             Browse -> "▦"
             Search -> "⌕"
+            Downloads -> "↓"
             Updates -> "▲"
         }
 }

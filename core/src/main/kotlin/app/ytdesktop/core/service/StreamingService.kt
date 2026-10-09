@@ -7,6 +7,7 @@ package app.ytdesktop.core.service
 import app.ytdesktop.core.model.ChannelPage
 import app.ytdesktop.core.model.PagedResult
 import app.ytdesktop.core.model.PageItem
+import app.ytdesktop.core.model.ResolvedDownload
 import app.ytdesktop.core.model.ResolvedPlayback
 import app.ytdesktop.core.model.StreamDetails
 
@@ -39,6 +40,12 @@ interface StreamingService {
 
     /** Picks the best playable video-only + audio pair for [videoUrl] (1.6/R7). */
     suspend fun resolvePlayback(videoUrl: String): ResolvedPlayback
+
+    /**
+     * Picks the best downloadable video-only + audio pair for [videoUrl]
+     * (2.4). Same R7 AV1 avoidance as playback; live broadcasts are rejected.
+     */
+    suspend fun resolveDownload(videoUrl: String): ResolvedDownload
 
     /** Full video page metadata including related content (1.4/1.5). */
     suspend fun streamDetails(url: String): StreamDetails

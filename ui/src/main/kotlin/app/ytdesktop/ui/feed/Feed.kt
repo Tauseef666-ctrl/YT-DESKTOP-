@@ -52,6 +52,7 @@ fun FeedColumn(
     onVideoClick: (StreamItem) -> Unit,
     modifier: Modifier = Modifier,
     onChannelClick: (String) -> Unit = {},
+    onDownload: ((StreamItem) -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
 
@@ -73,7 +74,11 @@ fun FeedColumn(
     ) {
         items(feed.items, key = { it.url }) { item ->
             when (item) {
-                is PageItem.Video -> VideoCard(item.item, onClick = { onVideoClick(item.item) })
+                is PageItem.Video -> VideoCard(
+                    item.item,
+                    onClick = { onVideoClick(item.item) },
+                    onDownload = onDownload?.let { cb -> { cb(item.item) } },
+                )
                 is PageItem.Playlist -> PageCard(
                     title = item.title,
                     subtitle = "Playlist · ${item.uploaderName}",
@@ -114,7 +119,12 @@ fun FeedColumn(
  * bottom-right corner, a 2-line title, the uploader, and a "views" detail line.
  */
 @Composable
-fun VideoCard(item: StreamItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun VideoCard(
+    item: StreamItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDownload: (() -> Unit)? = null,
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -168,6 +178,18 @@ fun VideoCard(item: StreamItem, onClick: () -> Unit, modifier: Modifier = Modifi
                     maxLines = 1,
                 )
             }
+        }
+        if (onDownload != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "↓",
+                fontSize = 22.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .clickable(onClick = onDownload)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
         }
     }
 }

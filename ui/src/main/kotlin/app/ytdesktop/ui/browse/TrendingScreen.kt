@@ -38,6 +38,7 @@ fun TrendingScreen(
     onVideoClick: (StreamItem) -> Unit,
     modifier: Modifier = Modifier,
     onChannelClick: (String) -> Unit = {},
+    onDownload: ((StreamItem) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val kiosks by produceState<List<String>?>(null) {
@@ -52,6 +53,7 @@ fun TrendingScreen(
             feed = rememberFeed(scope = scope, kioskId = selectedKiosk, service = service),
             onVideoClick = onVideoClick,
             onChannelClick = onChannelClick,
+            onDownload = onDownload,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
     }

@@ -45,6 +45,7 @@ fun SearchScreen(
     onQuerySubmitted: (String) -> Unit = {},
     onClearHistory: () -> Unit = {},
     onChannelClick: (String) -> Unit = {},
+    onDownload: ((StreamItem) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
@@ -152,6 +153,7 @@ fun SearchScreen(
                         feed = feed,
                         onVideoClick = onVideoClick,
                         onChannelClick = onChannelClick,
+                        onDownload = onDownload,
                         modifier = Modifier.weight(1f),
                     )
                 }

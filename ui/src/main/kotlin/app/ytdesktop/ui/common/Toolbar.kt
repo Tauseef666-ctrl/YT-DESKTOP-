@@ -6,6 +6,7 @@ package app.ytdesktop.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
@@ -19,14 +20,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * NewPipe-style page header: surface-colored bar with a bold title (and an
- * optional leading control such as a Back button), hairline separator below.
+ * NewPipe-style page header: surface-colored bar with a bold title (and
+ * optional leading/trailing controls), hairline separator below.
  */
 @Composable
 fun Toolbar(
     title: String,
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier
@@ -44,6 +46,8 @@ fun Toolbar(
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        Spacer(Modifier.weight(1f))
+        trailing?.invoke()
     }
     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }

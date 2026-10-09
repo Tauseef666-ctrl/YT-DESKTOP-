@@ -34,6 +34,27 @@ data class StreamDetails(
     val relatedVideos: List<StreamItem>,
 )
 
+/**
+ * The streams a download should capture (plan.md 2.4). YouTube VODs are
+ * video-only + audio-only DASH streams: each is fetched as its own file (the
+ * Phase 2.3 muxers then combine them into one media file). Live broadcasts
+ * cannot be downloaded — resolution rejects them.
+ */
+data class ResolvedDownload(
+    val title: String,
+    /** May be null for audio-only content. */
+    val video: DownloadableStream?,
+    val audio: DownloadableStream,
+    val durationSeconds: Long,
+)
+
+/** One URL to save, with the container suffix its mime type implies. */
+data class DownloadableStream(
+    val url: String,
+    /** "mp4" / "webm" / "m4a"… used for the destination file name. */
+    val extension: String,
+)
+
 data class ChannelTab(
     val name: String,
     val url: String,

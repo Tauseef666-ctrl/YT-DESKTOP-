@@ -9,9 +9,11 @@ import app.ytdesktop.core.errors.UserAction
 import app.ytdesktop.core.errors.YtException
 import app.ytdesktop.core.model.ChannelPage
 import app.ytdesktop.core.model.ChannelTab
+import app.ytdesktop.core.model.DownloadableStream
 import app.ytdesktop.core.model.PagedResult
 import app.ytdesktop.core.model.PageItem
 import app.ytdesktop.core.model.PlaybackSource
+import app.ytdesktop.core.model.ResolvedDownload
 import app.ytdesktop.core.model.ResolvedPlayback
 import app.ytdesktop.core.model.StreamDetails
 import app.ytdesktop.core.model.StreamItem
@@ -163,6 +165,54 @@ class YoutubeService(
                 thumbnailUrl = info.thumbnails?.firstOrNull()?.url,
             )
         }
+
+    override suspend fun resolveDownload(videoUrl: String): ResolvedDownload =
+        io(UserAction.STREAM_RESOLUTION) {
+            val info = StreamInfo.getInfo(npService, videoUrl)
+            if (info.streamType == StreamType.LIVE_STREAM ||
+                info.streamType == StreamType.AUDIO_LIVE_STREAM
+            ) {
+                throw YtException(
+                    UserAction.STREAM_RESOLUTION,
+                    "Live broadcasts cannot be downloaded",
+                )
+            }
+
+            val video = info.videoOnlyStreams
+                .filterNot { it.codec?.startsWith("av01") == true }
+                .ifEmpty { info.videoOnlyStreams }
+                .maxByOrNull { resolutionWidth(it.resolution) ?: 0 }
+                ?.let { stream ->
+                    val url = requireNotNull(stream.url) { "Video stream has no URL" }
+                    DownloadableStream(url, extensionFor(stream.format?.mimeType))
+                }
+            val audio = info.audioStreams
+                .maxByOrNull { it.averageBitrate }
+                ?: throw YtException(
+                    UserAction.STREAM_RESOLUTION,
+                    "This video has no downloadable audio streams",
+                )
+            ResolvedDownload(
+                title = info.name,
+                video = video,
+                audio = DownloadableStream(
+                    requireNotNull(audio.url) { "Audio stream has no URL" },
+                    extensionFor(audio.format?.mimeType),
+                ),
+                durationSeconds = info.duration,
+            )
+        }
+
+    /** "video/webm; codecs=vp9" -> "webm". Falls back to "bin" when unknown. */
+    private fun extensionFor(mimeType: String?): String = when {
+        mimeType == null -> "bin"
+        "webm" in mimeType || "vp9" in mimeType || "vp8" in mimeType -> "webm"
+        "mp4" in mimeType || "avc" in mimeType -> "mp4"
+        "m4a" in mimeType || mimeType.startsWith("audio/mp4") -> "m4a"
+        "ogg" in mimeType || "opus" in mimeType -> "ogg"
+        "3gp" in mimeType -> "3gp"
+        else -> "bin"
+    }
 
     override suspend fun streamDetails(url: String): StreamDetails = io(UserAction.VIDEO_PAGE) {
         val info = StreamInfo.getInfo(npService, url)
