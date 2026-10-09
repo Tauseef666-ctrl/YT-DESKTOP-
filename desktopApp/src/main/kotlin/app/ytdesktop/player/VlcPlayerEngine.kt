@@ -60,6 +60,8 @@ class VlcPlayerEngine(private val player: VlcPlayer) : PlayerEngine {
             player.play(source.mrl())
         } else if (source is PlaybackSource.Remote && companionAudio is PlaybackSource.Remote) {
             player.play(source.mrl(), options = listOf(":input-slave=#audio#${companionAudio.url}"))
+        } else if (source is PlaybackSource.Local && source.subtitleFile != null) {
+            player.play(source.mrl(), options = listOf(":sub-file=${source.subtitleFile}"))
         } else {
             player.play(source.mrl())
         }
