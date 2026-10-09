@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.StreamingService
+import app.ytdesktop.ui.common.Toolbar
 import app.ytdesktop.ui.feed.FeedColumn
 import app.ytdesktop.ui.feed.ResourceFeed
 import kotlinx.coroutines.delay
@@ -73,6 +74,7 @@ fun SearchScreen(
     }
 
     Column(modifier) {
+        Toolbar(title = "Search")
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },

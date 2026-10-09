@@ -53,16 +53,37 @@ enum class WindowWidthClass {
     }
 }
 
+// NewPipe palette (TeamNewPipe/NewPipe res/values/{dark_light}_*.xml):
+//   dark  background #222222, card #313131, dialog #424242, accent #FF5252
+//   light background #EEEEEE, card #F8F8F8, accent #E53935
+//   separators   dark #0AFFFFFF  light #32000000
 private val DarkColors = darkColorScheme(
     primary = Color(0xFFFF5252),
-    secondary = Color(0xFF7C4DFF),
-    background = Color(0xFF0E0E10),
-    surface = Color(0xFF17171A),
+    secondary = Color(0xFFFF5252),
+    background = Color(0xFF222222),
+    surface = Color(0xFF313131),
+    surfaceVariant = Color(0xFF424242),
+    onBackground = Color(0xFFFFFFFF),
+    onSurface = Color(0xFFFFFFFF),
+    onSurfaceVariant = Color(0xFFBDBDBD),
+    onPrimary = Color(0xFF000000),
+    outline = Color(0x1AFFFFFF),
+    outlineVariant = Color(0x0AFFFFFF),
 )
 
+// NewPipe light theme
 private val LightColors = lightColorScheme(
-    primary = Color(0xFFD32F2F),
-    secondary = Color(0xFF5E35B1),
+    primary = Color(0xFFE53935),
+    secondary = Color(0xFFE53935),
+    background = Color(0xFFEEEEEE),
+    surface = Color(0xFFF8F8F8),
+    surfaceVariant = Color(0xFFE9E9E9),
+    onBackground = Color(0xFF212121),
+    onSurface = Color(0xFF212121),
+    onSurfaceVariant = Color(0xFF757575),
+    onPrimary = Color(0xFFFFFFFF),
+    outline = Color(0x33000000),
+    outlineVariant = Color(0x1A000000),
 )
 
 @Composable

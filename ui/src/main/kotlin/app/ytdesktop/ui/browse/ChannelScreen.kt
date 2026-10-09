@@ -40,6 +40,7 @@ import app.ytdesktop.core.model.ChannelTab
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.StreamingService
 import app.ytdesktop.ui.common.SurfaceChip
+import app.ytdesktop.ui.common.Toolbar
 import app.ytdesktop.ui.errors.ErrorCard
 import app.ytdesktop.ui.feed.FeedColumn
 import app.ytdesktop.ui.feed.ResourceFeed
@@ -83,19 +84,12 @@ fun ChannelScreen(
     }
 
     Column(modifier) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onBack) { Text("‹ Back") }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                page?.title ?: "Channel",
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Toolbar(
+            title = page?.title ?: "Channel",
+            leading = {
+                TextButton(onClick = onBack) { Text("‹ Back") }
+            },
+        )
 
         val info = page
         when {

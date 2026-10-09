@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import app.ytdesktop.core.model.StreamItem
 import app.ytdesktop.core.service.StreamingService
 import app.ytdesktop.ui.common.SurfaceChip
+import app.ytdesktop.ui.common.Toolbar
 import app.ytdesktop.ui.feed.FeedColumn
 import app.ytdesktop.ui.feed.ResourceFeed
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,7 @@ fun TrendingScreen(
     var selectedKiosk by remember { mutableStateOf<String?>(null) }
 
     Column(modifier) {
+        Toolbar(title = "Trending")
         KioskChips(kiosks = kiosks, selected = selectedKiosk, onSelect = { selectedKiosk = it })
         FeedColumn(
             feed = rememberFeed(scope = scope, kioskId = selectedKiosk, service = service),
