@@ -53,6 +53,10 @@ jobs:
   windows:
     name: Windows installer + portable exe
     runs-on: windows-latest
+    # Job-level so both the "sign" and "warn" steps can read them in `if`.
+    env:
+      CODESIGN_PFX_B64: ${{ secrets.CODESIGN_PFX_B64 }}
+      CODESIGN_PASSWORD: ${{ secrets.CODESIGN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -103,6 +107,42 @@ jobs:
 
       - name: Build MSI and portable EXE
         run: ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe --stacktrace
+
+      # Smart App Control / SmartScreen (owner: "smart app guard blocks the
+      # installer"): unsigned builds are blocked outright by Windows 11 SAC and
+      # scare-screen every download otherwise. The only real fix is an
+      # Authenticode signature. This step is dormant until the owner supplies a
+      # cert as two repo secrets — CODESIGN_PFX_B64 (base64 of the .pfx) and
+      # CODESIGN_PASSWORD. signtool.exe ships with the Windows SDK that pads
+      # the windows-latest runner image.
+      - name: Sign MSI and EXE (when CODESIGN secrets are present)
+        if: env.CODESIGN_PFX_B64 != ''
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'ytdesktop-signing.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CODESIGN_PFX_B64))
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe `
+            | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw 'signtool.exe not found in the Windows SDK' }
+          $artifacts = @(Get-ChildItem 'desktopApp\build\compose\binaries\main\msi\*.msi') +
+            @(Get-ChildItem 'desktopApp\build\compose\binaries\main\exe\*.exe')
+          foreach ($a in $artifacts) {
+            Write-Host "== signing $($a.Name)"
+            & $signtool.FullName sign /f $pfx /p $env:CODESIGN_PASSWORD /fd SHA256 `
+              /tr http://timestamp.digicert.com /td SHA256 $a.FullName
+            if ($LASTEXITCODE -ne 0) { throw "signtool failed on $($a.Name)" }
+            & $signtool.FullName verify /pa /v $a.FullName | Select-Object -First 3
+            if ($LASTEXITCODE -ne 0) { throw "signature verify failed on $($a.Name)" }
+          }
+
+      - name: Warn when artifacts are unsigned
+        if: env.CODESIGN_PFX_B64 == ''
+        shell: pwsh
+        run: |
+          Write-Host "::warning::This build is NOT signed. Windows Smart App Control "`
+            "(Windows 11 22H2+) will block it and SmartScreen will warn "`
+            "everyone else. Add CODESIGN_PFX_B64 + CODESIGN_PASSWORD repo "`
+            "secrets (see SIGNING.md) to sign automatically."
 
       # The packaged app has never been launched anywhere, so assert it stays
       # alive for a boot window before we call this a release. We deliberately

@@ -77,6 +77,7 @@ compose.desktop {
             packageVersion = project.version.toString()
             description = "A YouTube front-end for Windows and Android"
             vendor = "YT Desktop contributors"
+            copyright = "Copyright © 2026 YT Desktop contributors — GNU GPL-3.0-or-later"
 
             modules(
                 "java.instrument",

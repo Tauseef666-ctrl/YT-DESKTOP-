@@ -45,8 +45,8 @@ import java.net.URI
 
 private val INITIAL_WIDTH: Dp = 1280.dp
 
-// Mirrors the Gradle `yt.version` property (default "0.1.1").
-private const val APP_VERSION = "0.1.1"
+// Mirrors the Gradle `yt.version` property (default "0.1.2").
+private const val APP_VERSION = "0.1.2"
 
 fun main() {
     // Must happen before VLCJ touches its native library.
