@@ -1,0 +1,73 @@
+/*
+ * SPDX-FileCopyrightText: 2026 NewPipe e.V. <https://newpipe-ev.de>
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+package net.newpipe.app.viewmodel.player
+
+import com.russhwolf.settings.MapSettings
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.Json
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import net.newpipe.app.player.MediaItem
+import net.newpipe.app.player.PlaybackController
+import net.newpipe.app.player.PlaybackState
+import net.newpipe.app.player.PlayerEngine
+import net.newpipe.app.player.PlaybackResumeStore
+import net.newpipe.app.player.PlayQueueStore
+import net.newpipe.app.player.PlaybackStatus
+import net.newpipe.app.player.Quality
+import net.newpipe.app.preferences.VideoAudioPreferences
+
+private class StubPlayerEngine : PlayerEngine {
+    override val isAvailable: Boolean = true
+    private val _state = MutableStateFlow(PlaybackState())
+    override val state: StateFlow<PlaybackState> = _state.asStateFlow()
+    override suspend fun prepare(item: MediaItem) {
+        _state.value = PlaybackState(mediaId = item.id, status = PlaybackStatus.READY)
+    }
+
+    override fun play() = Unit
+    override fun pause() = Unit
+    override fun stop() = Unit
+    override fun seekTo(positionMs: Long) = Unit
+    override fun setSpeed(speed: Float) = Unit
+    override fun setVolume(volume: Float) = Unit
+    override fun setMuted(muted: Boolean) = Unit
+    override fun setQuality(quality: Quality) = Unit
+    override fun release() = Unit
+}
+
+private fun playback(settings: MapSettings): PlaybackController =
+        PlaybackController(
+            StubPlayerEngine(),
+            PlaybackResumeStore(settings),
+            PlayQueueStore(settings, Json),
+            settings
+        )
+
+class PlayerViewModelTest {
+
+    @Test
+    fun seekStepUsesConfiguredSkipIntervalFromSettings() {
+        val settings = MapSettings()
+        settings.putString(VideoAudioPreferences.KEY_SEEK_DURATION, "25000")
+        val viewModel = PlayerViewModel(playback(settings), settings)
+
+        assertEquals(25_000L, viewModel.seekStepMillis(isShiftPressed = false))
+        assertEquals(60_000L, viewModel.seekStepMillis(isShiftPressed = true))
+    }
+
+    @Test
+    fun seekStepFallsBackToDefaultWhenPreferenceIsUnsetOrGarbage() {
+        val empty = MapSettings()
+        assertEquals(10_000L, PlayerViewModel(playback(empty), empty).seekStepMillis(isShiftPressed = false))
+
+        val garbage = MapSettings()
+        garbage.putString(VideoAudioPreferences.KEY_SEEK_DURATION, "not-a-number")
+        assertEquals(10_000L, PlayerViewModel(playback(garbage), garbage).seekStepMillis(isShiftPressed = false))
+    }
+}

@@ -12,7 +12,9 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalInspectionMode
 import com.russhwolf.settings.Settings
 import org.koin.compose.koinInject
@@ -171,8 +173,11 @@ fun AppTheme(
     },
     content: @Composable () -> Unit
 ) {
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    val plusColors = if (colorScheme.background.luminance() < 0.5f) DarkPlusColors else LightPlusColors
+    CompositionLocalProvider(LocalPlusColors provides plusColors) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }

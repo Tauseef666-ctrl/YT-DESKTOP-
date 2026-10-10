@@ -63,6 +63,7 @@ sonarqube = "7.4.0.8496"
 statesaver = "1.4.1" # TODO: Drop because it is deprecated and incompatible with KSP2
 stetho = "1.6.0"
 swiperefreshlayout = "1.2.0"
+vlcj = "4.11.0"
 # You can use a local version by uncommenting a few lines in settings.gradle
 # Or you can use a commit you pushed to GitHub by just replacing TeamNewPipe with your GitHub
 # name and the commit hash with the commit hash of the (pushed) commit you want to test
@@ -170,6 +171,7 @@ squareup-leakcanary-watcher = { module = "com.squareup.leakcanary:leakcanary-obj
 squareup-okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 squareup-okhttp-brotli = { module = "com.squareup.okhttp3:okhttp-brotli", version.ref = "okhttp" }
 touchlab-kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 zacsweers-autoservice-compiler = { module = "dev.zacsweers.autoservice:auto-service-ksp", version.ref = "autoservice-zacsweers" }
 
 [plugins]

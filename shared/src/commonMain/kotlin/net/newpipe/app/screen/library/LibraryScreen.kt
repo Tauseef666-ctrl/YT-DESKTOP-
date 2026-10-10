@@ -1,0 +1,422 @@
+/*
+ * SPDX-FileCopyrightText: 2026 NewPipe e.V. <https://newpipe-ev.de>
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+package net.newpipe.app.screen.library
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.tooling.preview.PreviewWrapper
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.newpipe.app.component.EmptyState
+import net.newpipe.app.component.ErrorState
+import net.newpipe.app.component.FilterChipRow
+import net.newpipe.app.component.LoadingState
+import net.newpipe.app.component.LocalMediaRow
+import net.newpipe.app.component.PlusScaffold
+import net.newpipe.app.component.SearchBarField
+import net.newpipe.app.component.SectionHeader
+import net.newpipe.app.component.ToolbarIconButton
+import net.newpipe.app.component.TopToolbar
+import net.newpipe.app.navigation.Destination
+import net.newpipe.app.navigation.Navigator
+import net.newpipe.app.player.LocalMediaFile
+import net.newpipe.app.preview.ThemePreviewProvider
+import net.newpipe.app.theme.plusColors
+import net.newpipe.app.theme.spaceNormal
+import net.newpipe.app.theme.spaceSmall
+import net.newpipe.app.theme.spaceXSmall
+import net.newpipe.app.util.formatBytes
+import net.newpipe.app.util.formatDuration
+import net.newpipe.app.viewmodel.library.LibraryViewModel
+import newpipe.shared.generated.resources.Res
+import newpipe.shared.generated.resources.ic_cloud_download
+import newpipe.shared.generated.resources.library_filter_all
+import newpipe.shared.generated.resources.library_filter_audio
+import newpipe.shared.generated.resources.library_filter_videos
+import newpipe.shared.generated.resources.library_no_matches_message
+import newpipe.shared.generated.resources.library_no_matches_title
+import newpipe.shared.generated.resources.library_search_placeholder
+import newpipe.shared.generated.resources.library_sort_date
+import newpipe.shared.generated.resources.library_sort_name
+import newpipe.shared.generated.resources.library_sort_size
+import newpipe.shared.generated.resources.library_view_grid
+import newpipe.shared.generated.resources.library_view_list
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
+
+/** Test tag for the library search input, shared with the search UI test. */
+const val TEST_TAG_LIBRARY_SEARCH = "TEST_TAG_LIBRARY_SEARCH"
+
+@Composable
+fun LibraryScreen(
+    navigator: Navigator = koinInject(),
+    viewModel: LibraryViewModel = koinViewModel()
+) {
+    val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
+    val scanError by viewModel.scanError.collectAsStateWithLifecycle()
+    var filters by remember { mutableStateOf(LibraryFilters()) }
+
+    LibraryScreenContent(
+        folders = folders,
+        items = items,
+        isScanning = isScanning,
+        scanError = scanError,
+        isScannerAvailable = viewModel.isScannerAvailable,
+        onAddFolder = viewModel::addFolder,
+        onRemoveFolder = viewModel::removeFolder,
+        onRescan = viewModel::rescan,
+        onPlay = { item ->
+            viewModel.play(item)
+            navigator.navigateTo(Destination.Player)
+        },
+        onNavigateUp = { navigator.navigateUp() },
+        filters = filters,
+        onFiltersChange = { filters = it }
+    )
+}
+
+@Composable
+fun LibraryScreenContent(
+    folders: List<String> = emptyList(),
+    items: List<LocalMediaFile> = emptyList(),
+    isScanning: Boolean = false,
+    scanError: String? = null,
+    isScannerAvailable: Boolean = true,
+    onAddFolder: (String) -> Unit = {},
+    onRemoveFolder: (String) -> Unit = {},
+    onRescan: () -> Unit = {},
+    onPlay: (LocalMediaFile) -> Unit = {},
+    onNavigateUp: () -> Unit = {},
+    filters: LibraryFilters = LibraryFilters(),
+    onFiltersChange: (LibraryFilters) -> Unit = {}
+) {
+    PlusScaffold(
+        toolbar = {
+            TopToolbar(
+                title = "Library",
+                subtitle = if (items.isEmpty()) null else "${items.size} items",
+                onBack = onNavigateUp,
+                actions = {
+                    if (folders.isNotEmpty()) {
+                        TextButton(onClick = onRescan, enabled = !isScanning) { Text("Rescan") }
+                    }
+                }
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = spaceNormal)
+        ) {
+            if (!isScannerAvailable) {
+                ErrorState(
+                    message = "Folder scanning is not available on this platform yet."
+                )
+            } else {
+                FolderSection(
+                    folders = folders,
+                    onAddFolder = onAddFolder,
+                    onRemoveFolder = onRemoveFolder
+                )
+                LibraryFilterControls(
+                    filters = filters,
+                    onFiltersChange = onFiltersChange
+                )
+                SectionHeader(title = "Media")
+                val visible = applyFilters(items, filters)
+                when {
+                    isScanning -> LoadingState(message = "Scanning indexed folders…")
+                    items.isEmpty() -> EmptyState(
+                        title = "No media found",
+                        message = "Add a folder above, then tap Rescan to build your library."
+                    )
+                    visible.isEmpty() -> EmptyState(
+                        title = stringResource(Res.string.library_no_matches_title),
+                        message = stringResource(Res.string.library_no_matches_message)
+                    )
+                    filters.view == ViewMode.GRID -> MediaGrid(items = visible, onPlay = onPlay)
+                    else -> visible.forEach { item ->
+                        LocalMediaRow(
+                            title = item.name,
+                            subtitle = item.extension.uppercase(),
+                            durationText = item.durationMs
+                                ?.takeIf { item.hasKnownDuration }
+                                ?.let { formatDuration(it / 1000) },
+                            sizeText = formatBytes(item.sizeBytes),
+                            onClick = { onPlay(item) }
+                        )
+                    }
+                }
+                if (scanError != null) {
+                    ErrorState(message = scanError)
+                }
+            }
+            Spacer(Modifier.height(spaceNormal))
+        }
+    }
+}
+
+@Composable
+private fun LibraryFilterControls(
+    filters: LibraryFilters,
+    onFiltersChange: (LibraryFilters) -> Unit
+) {
+    val colors = plusColors()
+    Column(Modifier.fillMaxWidth()) {
+        SearchBarField(
+            value = filters.query,
+            onValueChange = { query -> onFiltersChange(filters.copy(query = query)) },
+            placeholder = stringResource(Res.string.library_search_placeholder),
+            modifier = Modifier
+                .testTag(TEST_TAG_LIBRARY_SEARCH)
+                .padding(horizontal = spaceNormal)
+        )
+        FilterChipRow(
+            options = MediaFilter.entries.map { mediaFilterLabel(it) },
+            selectedIndex = filters.filter.ordinal,
+            onSelect = { index ->
+                onFiltersChange(filters.copy(filter = MediaFilter.entries[index]))
+            }
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spaceNormal, vertical = spaceSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spaceXSmall)) {
+                SortOrder.entries.forEach { order ->
+                    TextButton(onClick = { onFiltersChange(filters.copy(sort = order)) }) {
+                        Text(
+                            text = sortLabel(order),
+                            color = if (filters.sort == order) colors.accent else colors.textSecondary
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(spaceXSmall)) {
+                ViewMode.entries.forEach { mode ->
+                    TextButton(onClick = { onFiltersChange(filters.copy(view = mode)) }) {
+                        Text(
+                            text = if (mode == ViewMode.LIST) {
+                                stringResource(Res.string.library_view_list)
+                            } else {
+                                stringResource(Res.string.library_view_grid)
+                            },
+                            color = if (filters.view == mode) colors.accent else colors.textSecondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun mediaFilterLabel(filter: MediaFilter): String = when (filter) {
+    MediaFilter.ALL -> stringResource(Res.string.library_filter_all)
+    MediaFilter.VIDEOS -> stringResource(Res.string.library_filter_videos)
+    MediaFilter.AUDIO -> stringResource(Res.string.library_filter_audio)
+}
+
+@Composable
+private fun sortLabel(order: SortOrder): String = when (order) {
+    SortOrder.NAME -> stringResource(Res.string.library_sort_name)
+    SortOrder.SIZE -> stringResource(Res.string.library_sort_size)
+    SortOrder.NEWEST -> stringResource(Res.string.library_sort_date)
+}
+
+private const val GridColumns = 4
+
+@Composable
+private fun MediaGrid(items: List<LocalMediaFile>, onPlay: (LocalMediaFile) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        items.chunked(GridColumns).forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spaceNormal, vertical = spaceXSmall),
+                horizontalArrangement = Arrangement.spacedBy(spaceSmall)
+            ) {
+                row.forEach { item ->
+                    MediaTile(
+                        item = item,
+                        onClick = { onPlay(item) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                repeat(GridColumns - row.size) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaTile(
+    item: LocalMediaFile,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = plusColors()
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.surfaceElevated)
+            .clickable(onClick = onClick)
+            .padding(spaceSmall)
+    ) {
+        Text(
+            text = item.name,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+            color = colors.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(spaceXSmall))
+        Text(
+            text = formatBytes(item.sizeBytes),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun FolderSection(
+    folders: List<String>,
+    onAddFolder: (String) -> Unit,
+    onRemoveFolder: (String) -> Unit
+) {
+    val colors = plusColors()
+    var input by remember { mutableStateOf("") }
+
+    SectionHeader(title = "Indexed folders")
+    if (folders.isEmpty()) {
+        Text(
+            text = "No folders indexed yet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(horizontal = spaceNormal)
+        )
+    } else {
+        folders.forEach { folder ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spaceNormal, vertical = spaceNormal),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = folder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                ToolbarIconButton(
+                    painter = painterResource(Res.drawable.ic_cloud_download),
+                    contentDescription = "Remove folder",
+                    onClick = { onRemoveFolder(folder) }
+                )
+            }
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spaceNormal, vertical = spaceNormal),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spaceNormal)
+    ) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it },
+            singleLine = true,
+            label = { Text("Folder path") },
+            modifier = Modifier.weight(1f)
+        )
+        Button(
+            onClick = {
+                onAddFolder(input)
+                input = ""
+            },
+            enabled = input.isNotBlank()
+        ) {
+            Text("Add")
+        }
+    }
+}
+
+@PreviewWrapper(ThemePreviewProvider::class)
+@PreviewLightDark
+@Composable
+private fun LibraryScreenPreview() {
+    LibraryScreenContent(
+        folders = listOf("/home/user/Videos", "/media/audio"),
+        items = listOf(
+            LocalMediaFile(
+                id = "1",
+                path = "/home/user/Videos/demo.mp4",
+                name = "demo.mp4",
+                extension = "mp4",
+                mimeType = "video/mp4",
+                url = "file:///home/user/Videos/demo.mp4",
+                sizeBytes = 29_600_000
+            ),
+            LocalMediaFile(
+                id = "2",
+                path = "/media/audio/song.flac",
+                name = "song.flac",
+                extension = "flac",
+                mimeType = "audio/flac",
+                url = "file:///media/audio/song.flac",
+                sizeBytes = 41_200_000,
+                audioOnly = true
+            )
+        )
+    )
+}

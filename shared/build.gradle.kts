@@ -137,6 +137,11 @@ kotlin {
                 implementation(libs.androidx.test.espresso.core)
             }
         }
+        val jvmMain by getting {
+            dependencies {
+                implementation(libs.vlcj)
+            }
+        }
         val jvmTest by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)

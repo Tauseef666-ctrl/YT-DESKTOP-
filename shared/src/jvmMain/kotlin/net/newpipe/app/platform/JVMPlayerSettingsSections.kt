@@ -6,12 +6,17 @@
 package net.newpipe.app.platform
 
 import androidx.compose.runtime.Composable
+import net.newpipe.app.screen.settings.PlayerResumeSettingsSection
+import net.newpipe.app.screen.settings.ShortcutReferenceSection
 import org.koin.core.annotation.Singleton
 
 @Singleton(binds = [PlayerSettingsSections::class])
 class JVMPlayerSettingsSections : PlayerSettingsSections {
-    override val isAvailable = false
+    override val isAvailable = true
 
     @Composable
-    override fun Render() = Unit
+    override fun Render() {
+        PlayerResumeSettingsSection()
+        ShortcutReferenceSection()
+    }
 }

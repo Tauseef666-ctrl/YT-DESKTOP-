@@ -1,0 +1,472 @@
+/*
+ * SPDX-FileCopyrightText: 2026 NewPipe e.V. <https://newpipe-ev.de>
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+package net.newpipe.app.screen.player
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.tooling.preview.PreviewWrapper
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.newpipe.app.component.EmptyState
+import net.newpipe.app.component.ErrorState
+import net.newpipe.app.component.FilterChipRow
+import net.newpipe.app.component.PlayerFrame
+import net.newpipe.app.component.PlusScaffold
+import net.newpipe.app.component.SectionHeader
+import net.newpipe.app.component.StatusChip
+import net.newpipe.app.component.StatusKind
+import net.newpipe.app.component.TopToolbar
+import net.newpipe.app.navigation.Navigator
+import net.newpipe.app.platform.PopOutCoordinator
+import net.newpipe.app.player.PlaybackState
+import net.newpipe.app.player.PlaybackStatus
+import net.newpipe.app.player.PlayerAction
+import net.newpipe.app.player.PlayerEngine
+import net.newpipe.app.player.PlayerQueueState
+import net.newpipe.app.player.PlayerShortcuts
+import net.newpipe.app.player.PlayerVideoSurface
+import net.newpipe.app.player.Quality
+import net.newpipe.app.player.RepeatMode
+import net.newpipe.app.player.ShortcutResolver
+import net.newpipe.app.player.onPlayerKeyEvent
+import net.newpipe.app.preview.ThemePreviewProvider
+import net.newpipe.app.theme.plusColors
+import net.newpipe.app.theme.spaceLarge
+import net.newpipe.app.theme.spaceNormal
+import net.newpipe.app.theme.spaceSmall
+import net.newpipe.app.util.formatDuration
+import net.newpipe.app.viewmodel.player.PlayerViewModel
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
+
+private val SpeedOptions = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+@Composable
+fun PlayerScreen(
+    navigator: Navigator = koinInject(),
+    viewModel: PlayerViewModel = koinViewModel(),
+    engine: PlayerEngine = koinInject(),
+    popOut: PopOutCoordinator = koinInject()
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val queue by viewModel.queueState.collectAsStateWithLifecycle()
+    PlayerScreenContent(
+        state = state,
+        queue = queue,
+        engine = engine,
+        isEngineAvailable = viewModel.isEngineAvailable,
+        popOut = popOut,
+        onPlayPause = viewModel::togglePlayPause,
+        onStop = viewModel::stop,
+        onPrevious = viewModel::previous,
+        onNext = viewModel::next,
+        onSeek = viewModel::seekTo,
+        onSpeed = viewModel::setSpeed,
+        onVolume = viewModel::setVolume,
+        onToggleMute = viewModel::toggleMute,
+        onQuality = viewModel::setQuality,
+        onToggleShuffle = viewModel::toggleShuffle,
+        onRepeatMode = viewModel::setRepeatMode,
+        onSeekStepMillis = viewModel::seekStepMillis,
+        onNavigateUp = { navigator.navigateUp() }
+    )
+}
+
+@Composable
+fun PlayerScreenContent(
+    state: PlaybackState = PlaybackState(),
+    queue: PlayerQueueState = PlayerQueueState(),
+    engine: PlayerEngine? = null,
+    isEngineAvailable: Boolean = true,
+    popOut: PopOutCoordinator? = null,
+    shortcuts: ShortcutResolver = remember { ShortcutResolver() },
+    onPlayPause: () -> Unit = {},
+    onStop: () -> Unit = {},
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {},
+    onSeek: (Long) -> Unit = {},
+    onSpeed: (Float) -> Unit = {},
+    onVolume: (Float) -> Unit = {},
+    onToggleMute: () -> Unit = {},
+    onQuality: (Quality) -> Unit = {},
+    onToggleShuffle: () -> Unit = {},
+    onRepeatMode: (RepeatMode) -> Unit = {},
+    onSeekStepMillis: (Boolean) -> Long = { PlayerShortcuts.seekStepMillis(it) },
+    onNavigateUp: () -> Unit = {}
+) {
+    PlusScaffold(
+        toolbar = {
+            val miniPlayerOpen = popOut?.isOpen?.collectAsStateWithLifecycle()?.value ?: false
+            TopToolbar(
+                title = queue.current?.title ?: "Player",
+                subtitle = playbackStatusLabel(state.status),
+                onBack = onNavigateUp,
+                actions = {
+                    if (popOut != null && popOut.supported) {
+                        TextButton(onClick = { popOut.toggle() }) {
+                            Text(if (miniPlayerOpen) "Close mini player" else "Mini player")
+                        }
+                    }
+                }
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .onPlayerKeyEvent { info ->
+                    if (info.type != KeyEventType.KeyDown) {
+                        false
+                    } else {
+                        val action = shortcuts.actionFor(info.key, info.isCtrlPressed)
+                        when (action) {
+                            PlayerAction.PLAY_PAUSE -> onPlayPause()
+                            PlayerAction.STOP -> onStop()
+                            PlayerAction.NEXT -> onNext()
+                            PlayerAction.PREVIOUS -> onPrevious()
+                            PlayerAction.SEEK_FORWARD -> onSeek(
+                                state.positionMs + onSeekStepMillis(info.isShiftPressed)
+                            )
+                            PlayerAction.SEEK_BACKWARD -> onSeek(
+                                (state.positionMs - onSeekStepMillis(info.isShiftPressed))
+                                    .coerceAtLeast(0L)
+                            )
+                            PlayerAction.VOLUME_UP -> onVolume((state.volume + 0.1f).coerceIn(0f, 1f))
+                            PlayerAction.VOLUME_DOWN -> onVolume((state.volume - 0.1f).coerceIn(0f, 1f))
+                            PlayerAction.MUTE -> onToggleMute()
+                            null -> return@onPlayerKeyEvent false
+                        }
+                        true
+                    }
+                }
+        ) {
+            PlayerFrame(
+                title = queue.current?.title,
+                subtitle = "NewPipe+ playback engine",
+                video = {
+                    val activeEngine = engine
+                    if (activeEngine != null && isEngineAvailable && state.mediaId != null) {
+                        PlayerVideoSurface(activeEngine, Modifier.fillMaxSize())
+                    } else {
+                        PlayerSurface(state = state, isEngineAvailable = isEngineAvailable)
+                    }
+                },
+                controls = {
+                    TransportControls(
+                        state = state,
+                        enabled = isEngineAvailable,
+                        onPlayPause = onPlayPause,
+                        onStop = onStop,
+                        onPrevious = onPrevious,
+                        onNext = onNext,
+                        onSeek = onSeek
+                    )
+                }
+            )
+
+            when {
+                !isEngineAvailable -> ErrorState(
+                    message = state.error?.message
+                        ?: "Playback is not available on this platform.",
+                    modifier = Modifier.padding(spaceLarge)
+                )
+
+                state.error != null -> ErrorState(
+                    message = state.error!!.message,
+                    modifier = Modifier.padding(spaceLarge)
+                )
+
+                queue.isEmpty -> EmptyState(
+                    title = "Nothing loaded",
+                    message = "Pick something to play and its controls, quality and queue appear here.",
+                    modifier = Modifier.padding(spaceLarge)
+                )
+
+                else -> {
+                    SectionHeader(title = "Playback")
+                    PlaybackSettings(
+                        state = state,
+                        onSpeed = onSpeed,
+                        onVolume = onVolume,
+                        onToggleMute = onToggleMute,
+                        onQuality = onQuality
+                    )
+                    SectionHeader(title = "Up next")
+                    QueueList(queue = queue)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(spaceLarge),
+                        horizontalArrangement = Arrangement.spacedBy(spaceSmall)
+                    ) {
+                        TextButton(onClick = onToggleShuffle) {
+                            Text(if (queue.isShuffled) "Shuffle: on" else "Shuffle: off")
+                        }
+                        TextButton(onClick = { onRepeatMode(queue.repeatMode.next()) }) {
+                            Text("Repeat: ${queue.repeatMode.name.lowercase()}")
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(spaceLarge))
+        }
+    }
+}
+
+@Composable
+private fun PlayerSurface(state: PlaybackState, isEngineAvailable: Boolean) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(spaceLarge)
+    ) {
+        StatusChip(
+            text = playbackStatusLabel(state.status).uppercase(),
+            kind = statusKind(state.status)
+        )
+        Spacer(Modifier.height(spaceSmall))
+        Text(
+            text = when {
+                !isEngineAvailable -> state.error?.message ?: "No playback engine"
+                state.mediaId == null -> "No media loaded"
+                state.status == PlaybackStatus.LOADING -> "Resolving stream…"
+                else -> "Video surface"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFB8B8C0),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun TransportControls(
+    state: PlaybackState,
+    enabled: Boolean,
+    onPlayPause: () -> Unit,
+    onStop: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    val duration = state.durationMs.coerceAtLeast(0L)
+    val canSeek = enabled && duration > 0L
+
+    var scrubbing by remember { mutableStateOf(false) }
+    var scrubPosition by remember { mutableStateOf(0f) }
+    val shownPosition = if (scrubbing) scrubPosition else state.positionMs.toFloat()
+    val rangeEnd = if (duration > 0L) duration.toFloat() else 1f
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatDuration(state.positionMs / 1000L),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White
+            )
+            Slider(
+                value = shownPosition.coerceIn(0f, rangeEnd),
+                onValueChange = {
+                    scrubbing = true
+                    scrubPosition = it
+                },
+                onValueChangeFinished = {
+                    if (canSeek) onSeek(scrubPosition.toLong())
+                    scrubbing = false
+                },
+                valueRange = 0f..rangeEnd,
+                enabled = canSeek,
+                modifier = Modifier.weight(1f).padding(horizontal = spaceNormal)
+            )
+            Text(
+                text = formatDuration(if (duration > 0L) duration / 1000L else 0L),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onPrevious, enabled = enabled) { Text("Prev") }
+            Button(onClick = onPlayPause, enabled = enabled) {
+                Text(if (state.isPlaying) "Pause" else "Play")
+            }
+            Spacer(Modifier.width(spaceSmall))
+            TextButton(onClick = onStop, enabled = enabled) { Text("Stop") }
+            TextButton(onClick = onNext, enabled = enabled) { Text("Next") }
+        }
+        if (scrubbing) {
+            Text(
+                text = formatDuration(scrubPosition.toLong() / 1000L),
+                style = MaterialTheme.typography.labelSmall,
+                color = plusColors().accent,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaybackSettings(
+    state: PlaybackState,
+    onSpeed: (Float) -> Unit,
+    onVolume: (Float) -> Unit,
+    onToggleMute: () -> Unit,
+    onQuality: (Quality) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spaceLarge)) {
+        Text(
+            text = "Speed",
+            style = MaterialTheme.typography.labelMedium,
+            color = plusColors().textSecondary
+        )
+        Spacer(Modifier.height(spaceSmall))
+        FilterChipRow(
+            options = SpeedOptions.map { "${formatSpeed(it)}×" },
+            selectedIndex = SpeedOptions.indexOfFirst { it == state.playbackSpeed }.coerceAtLeast(0),
+            onSelect = { onSpeed(SpeedOptions[it]) },
+            contentPadding = PaddingValues(0.dp)
+        )
+        Spacer(Modifier.height(spaceNormal))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Volume",
+                style = MaterialTheme.typography.labelMedium,
+                color = plusColors().textSecondary
+            )
+            Slider(
+                value = state.volume.coerceIn(0f, 1f),
+                onValueChange = onVolume,
+                valueRange = 0f..1f,
+                modifier = Modifier.weight(1f).padding(horizontal = spaceNormal)
+            )
+            TextButton(onClick = onToggleMute) {
+                Text(if (state.isMuted) "Unmute" else "Mute")
+            }
+        }
+        Spacer(Modifier.height(spaceNormal))
+        Text(
+            text = "Quality",
+            style = MaterialTheme.typography.labelMedium,
+            color = plusColors().textSecondary
+        )
+        Spacer(Modifier.height(spaceSmall))
+        val qualities = Quality.entries
+        FilterChipRow(
+            options = qualities.map { it.label },
+            selectedIndex = qualities.indexOf(state.quality).coerceAtLeast(0),
+            onSelect = { onQuality(qualities[it]) },
+            contentPadding = PaddingValues(0.dp)
+        )
+    }
+}
+
+@Composable
+private fun QueueList(queue: PlayerQueueState) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spaceLarge)) {
+        queue.items.forEachIndexed { index, item ->
+            val isCurrent = index == queue.currentIndex
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = spaceSmall),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = (index + 1).toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isCurrent) plusColors().accent else plusColors().textMuted,
+                    modifier = Modifier.width(28.dp)
+                )
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isCurrent) plusColors().textPrimary else plusColors().textSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                if (item.durationMs > 0L) {
+                    Text(
+                        text = formatDuration(item.durationMs / 1000L),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = plusColors().textMuted
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatSpeed(speed: Float): String =
+    if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()
+
+private fun playbackStatusLabel(status: PlaybackStatus): String = when (status) {
+    PlaybackStatus.IDLE -> "Idle"
+    PlaybackStatus.LOADING -> "Loading"
+    PlaybackStatus.READY -> "Ready"
+    PlaybackStatus.PLAYING -> "Playing"
+    PlaybackStatus.PAUSED -> "Paused"
+    PlaybackStatus.ENDED -> "Ended"
+    PlaybackStatus.ERROR -> "Error"
+}
+
+private fun statusKind(status: PlaybackStatus): StatusKind = when (status) {
+    PlaybackStatus.ERROR -> StatusKind.DANGER
+    PlaybackStatus.PLAYING -> StatusKind.LIVE
+    PlaybackStatus.LOADING -> StatusKind.WARNING
+    PlaybackStatus.PAUSED, PlaybackStatus.READY -> StatusKind.INFO
+    PlaybackStatus.ENDED -> StatusKind.SUCCESS
+    PlaybackStatus.IDLE -> StatusKind.INFO
+}
+
+private fun RepeatMode.next(): RepeatMode = when (this) {
+    RepeatMode.OFF -> RepeatMode.ALL
+    RepeatMode.ALL -> RepeatMode.ONE
+    RepeatMode.ONE -> RepeatMode.OFF
+}
+
+@PreviewWrapper(ThemePreviewProvider::class)
+@PreviewLightDark
+@Composable
+private fun PlayerScreenPreview() {
+    PlayerScreenContent(
+        state = PlaybackState(status = PlaybackStatus.READY, durationMs = 213_000L, positionMs = 42_000L),
+        queue = PlayerQueueState(
+            items = listOf(
+                net.newpipe.app.player.MediaItem(id = "1", title = "A private, polished media experience", durationMs = 213_000L),
+                net.newpipe.app.player.MediaItem(id = "2", title = "Next up in the queue", durationMs = 180_000L)
+            ),
+            currentIndex = 0
+        )
+    )
+}

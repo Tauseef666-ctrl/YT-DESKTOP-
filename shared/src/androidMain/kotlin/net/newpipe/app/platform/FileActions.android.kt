@@ -1,0 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: 2026 NewPipe e.V. <https://newpipe-ev.de>
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+package net.newpipe.app.platform
+
+/** Android has no desktop-style file opener; downloads are surfaced through the system UI. */
+actual fun openDownloadedFile(path: String): Boolean = false
+
+actual fun openDownloadedFileFolder(path: String): Boolean = false

@@ -165,5 +165,62 @@
     <string name="always_use_exoplayer_set_output_surface_workaround_title">Always use ExoPlayer's video output surface setting workaround</string>
     <string name="always_use_exoplayer_set_output_surface_workaround_summary">This workaround releases and re-instantiates video codecs when a surface change occurs, instead of setting the surface to the codec directly. Already used by ExoPlayer on some devices with this issue, this setting has only an effect on Android 6 and higher\n\nEnabling this option may prevent playback errors when switching the current video player or switching to fullscreen</string>
 
+    <!-- Playback resume (F9) -->
+    <string name="enable_playback_resume_title">Resume playback</string>
+    <string name="enable_playback_resume_summary">Restore the last playback position when reopening a video</string>
+    <string name="clear_resume_positions_title">Clear saved resume positions</string>
+    <string name="clear_resume_positions_summary">Forget the stored playback position for every video — %1$d saved</string>
+    <string name="resume_positions_cleared">Saved resume positions cleared</string>
+    <string name="settings_category_shortcuts_title">Keyboard shortcuts</string>
+    <string name="settings_shortcuts_search_placeholder">Search shortcuts</string>
+    <string name="settings_shortcuts_none_found">No shortcuts match your search</string>
+    <string name="settings_shortcuts_reserved_note">Media and volume keys are reserved for accessibility and cannot be re-bound.</string>
+    <string name="settings_category_resume_title">Playback resume</string>
+
+    <!-- Navigation -->
+    <string name="nav_search">Search</string>
+    <string name="nav_trending">Trending</string>
+    <string name="nav_history">History</string>
+
+    <!-- Search screen -->
+    <string name="search_screen_title">Search</string>
+    <string name="search_screen_placeholder">Search for videos, channels and playlists…</string>
+    <string name="search_empty_title">No results yet</string>
+    <string name="search_empty_message">Type a query above. Results will appear once the media provider is wired up.</string>
+
+    <!-- Trending screen -->
+    <string name="trending_screen_title">Trending</string>
+    <string name="trending_empty_title">Nothing trending yet</string>
+    <string name="trending_empty_message">Ranked content will appear here once the provider delivers it.</string>
+
+    <!-- History screen -->
+    <string name="history_screen_title">History</string>
+    <string name="history_empty_title">No history yet</string>
+    <string name="history_empty_message">Videos you watch will be listed here once playback history is wired up.</string>
+
+    <!-- Downloads: tabs -->
+    <string name="downloads_tab_all">All</string>
+    <string name="downloads_tab_queued">Queued</string>
+    <string name="downloads_tab_downloading">Downloading</string>
+    <string name="downloads_tab_paused">Paused</string>
+    <string name="downloads_tab_completed">Completed</string>
+    <string name="downloads_tab_failed">Failed</string>
+    <string name="downloads_tab_empty_title">Nothing here</string>
+    <string name="downloads_tab_empty_message">No downloads match this tab yet.</string>
+    <string name="downloads_open_file">Open file</string>
+    <string name="downloads_open_folder">Open folder</string>
+
+    <!-- Library: search/filter/sort/view -->
+    <string name="library_search_placeholder">Search your library…</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_filter_videos">Videos</string>
+    <string name="library_filter_audio">Audio</string>
+    <string name="library_sort_name">Name</string>
+    <string name="library_sort_size">Size</string>
+    <string name="library_sort_date">Date</string>
+    <string name="library_view_list">List</string>
+    <string name="library_view_grid">Grid</string>
+    <string name="library_no_matches_title">No matches</string>
+    <string name="library_no_matches_message">Nothing in your library matches the current search or filter.</string>
 
 </resources>

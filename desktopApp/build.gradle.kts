@@ -16,8 +16,13 @@ dependencies {
     implementation(projects.shared)
 
     implementation(compose.desktop.currentOs)
+    implementation(libs.jetbrains.compose.material3)
     implementation(libs.jetbrains.coroutines.swing)
     implementation(libs.jetbrains.compose.preview)
+    implementation(libs.jetbrains.lifecycle.viewmodel)
+    implementation(libs.koin.compose.viewmodel)
+    implementation(libs.russhwolf.settings.core)
+    implementation(libs.kotlinx.serialization.json)
 }
 
 compose.desktop {
