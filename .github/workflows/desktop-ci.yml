@@ -1,0 +1,67 @@
+name: Desktop CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - dev
+      - master
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'todo.md'
+      - 'DESIGN_SYSTEM.md'
+      - 'FEATURE_INVENTORY.md'
+      - 'doc/**'
+      - 'fastlane/**'
+      - 'assets/**'
+      - '.github/**/*.md'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+  push:
+    branches:
+      - dev
+      - master
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'todo.md'
+      - 'DESIGN_SYSTEM.md'
+      - 'FEATURE_INVENTORY.md'
+      - 'doc/**'
+      - 'fastlane/**'
+      - 'assets/**'
+      - '.github/**/*.md'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+
+jobs:
+  desktop-jvm-tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: gradle/actions/wrapper-validation@v6
+
+      - name: set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: "temurin"
+          cache: 'gradle'
+
+      - name: Compile desktop app and run shared JVM tests
+        run: ./gradlew :shared:jvmTest :desktopApp:compileKotlin --stacktrace
+
+      - name: Upload desktop build report
+        uses: actions/upload-artifact@v7
+        with:
+          name: jvm-test-results
+          path: |
+            shared/build/reports/tests/jvmTest
+            shared/build/test-results/jvmTest
+          if-no-files-found: error
+          retention-days: 7

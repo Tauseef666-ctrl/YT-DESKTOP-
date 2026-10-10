@@ -31,6 +31,67 @@
 >
 > <b>"NewPipe" IS A REGISTERED WORD MARK SUBJECT TO [ITS TRADEMARK POLICY](https://newpipe-ev.de/policy/trademark/). INFRINGING APPLICATIONS WILL NOT BE TOLERATED.</b>
 
+## NewPipe+ (desktop port)
+
+NewPipe+ adds a desktop (Windows/Linux/macOS via JVM + Compose Multiplatform) companion to NewPipe, sharing the private, advertisement-free ethos of the Android app. This is a work-in-progress port and a superset of the upstream codebase.
+
+### Modules
+
+* `:app` — the upstream Android app, preserved and unchanged-but-buildable.
+* `:shared` — Kotlin Multiplatform module (Android/JVM/iOS) containing the new Compose UI, theme, and the player/downloads/library/settings view models plus pure logic.
+* `:desktopApp` — a plain JVM Compose Desktop shell that hosts the shared UI, plus a floating mini-player window and window-size/workspace persistence.
+* `:iosApp` — an Xcode shell (stub only; no iOS support is claimed).
+
+### Design & ethos
+
+* Privacy-first: no accounts, no tracking.
+* Dark + red cinematic design system.
+* Honest UI: real empty/loading/error states, no fake progress or dead toggles.
+* Keyboard shortcuts with conflict detection.
+* Per-video settings and resume positions stored locally.
+* Playlist/queue persistence.
+* Incremental local-library scan.
+* Downloads engine with resume/pause/cancel and open-file/open-folder via the OS.
+
+### Build & run
+
+JDK 21 is required. On the local machine Gradle is run with `--offline`.
+
+Run the shared tests:
+
+```sh
+./gradlew :shared:jvmTest --offline
+```
+
+Compile the desktop app:
+
+```sh
+./gradlew :desktopApp:compileKotlin --offline
+```
+
+Launch the desktop app:
+
+```sh
+./gradlew :desktopApp:run --offline
+```
+
+### Status
+
+* 193 tests passing in `:shared:jvmTest`, 0 failures.
+* Ten enhancements (F1–F10) are tracked in [`todo.md`](todo.md), alongside phases 1–14.
+* The dark cinematic design system (red `#E53935` accent) is documented in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
+* The feature-preservation contract is recorded in [`FEATURE_INVENTORY.md`](FEATURE_INVENTORY.md).
+
+Real video playback requires libVLC; the JVM engine reports `isAvailable=false` when it is absent, and it is not installed on the current development machine. Windows MSI/EXE packaging is declared but not produced on this machine (no WiX toolchain). The Android `:app` remains the reference implementation and the real playback path.
+
+### Keyboard shortcuts
+
+Space play/pause, ←/→ seek (10s, or 60s with Shift), ↑/↓ and the media keys adjust volume, M mutes, and S cycles playback speed — all customizable bindings with a searchable in-app reference.
+
+### License (desktop port)
+
+The whole repository, including the port, stays GPL-3.0-or-later, under NewPipe e.V. copyright headers (SPDX-FileCopyrightText 2026 NewPipe e.V.).
+
 ## Screenshots
 
 [<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/00.png" width=160>](fastlane/metadata/android/en-US/images/phoneScreenshots/00.png)

@@ -32,3 +32,8 @@ node_modules/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# Kotlin Multiplatform / desktop
+*.hprof
+hs_err_pid*.log
+replay_pid*.log
