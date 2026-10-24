@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -35,11 +36,13 @@ fun main() = application {
     // opens a stream. The video surface is embedded into the stream screen.
     val playbackController = remember { createPlaybackController() }
 
+    val appIcon = painterResource("app-icon.png")
     val windowState = rememberWindowState(width = 1440.dp, height = 900.dp)
     Window(
         onCloseRequest = ::exitApplication,
         title = "YT Desktop",
         state = windowState,
+        icon = appIcon,
     ) {
         MaterialTheme {
             val debugStreamUrl = System.getenv("NEWPIPE_START_STREAM_URL")
@@ -65,7 +68,8 @@ fun main() = application {
             },
             title = state.title.ifEmpty { "YT Desktop" },
             state = rememberWindowState(width = 720.dp, height = 480.dp),
-            alwaysOnTop = true
+            alwaysOnTop = true,
+            icon = appIcon
         ) {
             MaterialTheme {
                 VideoPlayer(

@@ -29,11 +29,21 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = NEWPIPE_APPLICATION_ID_NEW
-            packageVersion = NEWPIPE_VERSION_NAME
-            description = "NewPipe - Libre lightweight streaming client"
+            packageName = "YT-Desktop"
+            packageVersion = "0.29.5"
+            description = "YT Desktop - Libre lightweight streaming client"
             copyright = "\u00a9 2026 NewPipe e.V. Licensed under GPL-3.0-or-later"
-            vendor = "NewPipe e.V."
+            vendor = "YT Desktop"
+
+            windows {
+                menu = true
+                shortcut = true
+                iconFile.set(project.file("src/main/resources/app-icon.ico"))
+                dirChooser = true
+                menuGroup = "YT Desktop"
+                upgradeUuid = "6943C53C-2A58-48D3-87FD-4375A2BB5854"
+                perUserInstall = false
+            }
         }
     }
 }
