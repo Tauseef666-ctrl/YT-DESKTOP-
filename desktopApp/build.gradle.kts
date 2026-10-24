@@ -27,17 +27,8 @@ compose.desktop {
     application {
         mainClass = "net.newpipe.app.MainKt"
 
-        jvmArgs += listOf(
-            "-Dfile.encoding=UTF-8",
-            "-Dsun.awt.disablegrab=true",
-            "--add-opens=java.base/java.lang=ALL-UNNAMED",
-            "--add-opens=java.base/java.nio=ALL-UNNAMED",
-            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
-            "--add-opens=java.desktop/java.awt=ALL-UNNAMED"
-        )
-
         nativeDistributions {
-            targetFormats(TargetFormat.Msi)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "YT-Desktop"
             packageVersion = "0.29.5"
             description = "YT Desktop - Libre lightweight streaming client"
