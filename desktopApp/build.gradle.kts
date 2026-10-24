@@ -19,7 +19,7 @@ dependencies {
     implementation(libs.jetbrains.coroutines.swing)
     implementation(libs.jetbrains.compose.preview)
 
-    // The player window uses material3 components, the same ones the shared module uses
+    // Keep the material3 artifacts aligned with the shared module
     implementation(libs.jetbrains.compose.material3)
 }
 
@@ -32,7 +32,7 @@ compose.desktop {
             packageName = NEWPIPE_APPLICATION_ID_NEW
             packageVersion = NEWPIPE_VERSION_NAME
             description = "NewPipe - Libre lightweight streaming client"
-            copyright = "© 2026 NewPipe e.V. Licensed under GPL-3.0-or-later"
+            copyright = "\u00a9 2026 NewPipe e.V. Licensed under GPL-3.0-or-later"
             vendor = "NewPipe e.V."
         }
     }
