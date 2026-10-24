@@ -250,13 +250,18 @@ class VlcPlaybackController : PlaybackController, VideoFrameProvider {
             override fun onDisplay(mediaPlayer: MediaPlayer, rgbBuffer: IntArray) {
                 // The render callback runs on a libVLC thread. A copied buffer is handed to the
                 // user interface, so that libVLC can reuse its own buffer immediately.
-                _frame.value = VideoFrame(FRAME_WIDTH, FRAME_HEIGHT, rgbBuffer.copyOf())
+                if (FRAME_WIDTH > 0 && FRAME_HEIGHT > 0 && rgbBuffer.isNotEmpty()) {
+                    _frame.value = VideoFrame(FRAME_WIDTH, FRAME_HEIGHT, rgbBuffer.copyOf())
+                }
             }
         }
 
         val bufferFormatCallback = object : BufferFormatCallback {
             override fun getBufferFormat(sourceWidth: Int, sourceHeight: Int): BufferFormat =
-                RV32BufferFormat(FRAME_WIDTH, FRAME_HEIGHT)
+                RV32BufferFormat(
+                    if (FRAME_WIDTH > 0) FRAME_WIDTH else maxOf(1, sourceWidth),
+                    if (FRAME_HEIGHT > 0) FRAME_HEIGHT else maxOf(1, sourceHeight)
+                )
 
             override fun newFormatSize(
                 width: Int,

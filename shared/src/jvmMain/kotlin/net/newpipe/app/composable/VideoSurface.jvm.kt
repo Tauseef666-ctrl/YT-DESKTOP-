@@ -53,7 +53,14 @@ actual fun VideoSurface(
     val fallback = remember { mutableStateOf<VideoFrame?>(null) }
     val frame by provider?.frame?.collectAsState() ?: fallback
 
-    val bitmap = remember(frame) { frame?.toImageBitmap() }
+    val bitmap = remember(frame) {
+        val f = frame
+        if (f != null && f.width > 0 && f.height > 0 && f.pixels.isNotEmpty()) {
+            runCatching { f.toImageBitmap() }.getOrNull()
+        } else {
+            null
+        }
+    }
 
     Box(modifier = modifier.background(Color.Black).clipToBounds()) {
         if (bitmap != null) {
@@ -81,6 +88,9 @@ actual fun VideoSurface(
  * a strong blue tint.
  */
 private fun VideoFrame.toImageBitmap(): ImageBitmap {
+    if (width <= 0 || height <= 0 || pixels.isEmpty()) {
+        throw IllegalArgumentException("width and height must be greater than zero")
+    }
     val info = ImageInfo(
         width = width,
         height = height,
